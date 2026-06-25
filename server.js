@@ -12,11 +12,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 // НАСТРОЙКА КРИПТОБОТА
 // ==========================================
-// Ставим false, так как тестируем именно реальную (основную) сеть
 const IS_TESTNET = false; 
 
-// Вставь сюда свой реальный токен из официального @CryptoBot (Crypto Pay -> My Apps)
-const CRYPTO_BOT_TOKEN = "СЮДА_ВСТАВЬ_СВОЙ_РЕАЛЬНЫЙ_ТОКЕН"; 
+// ВНИМАТЕЛЬНО вставьте сюда ваш РЕАЛЬНЫЙ токен из @CryptoBot между кавычек
+const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x"; 
 // ==========================================
 
 // 2. Обрабатываем создание счета в CryptoBot
@@ -33,18 +32,12 @@ app.post('/api/create-invoice', async (req, res) => {
             return res.status(400).json({ success: false, error: "Цена не получена от фронтенда" });
         }
 
-        // Очищаем цену от лишних знаков
         const cleanPrice = price.toString().replace(/[^\d.]/g, '');
 
-        // Автоматический выбор адреса основной сети (https://pay.crypto.bot)
         const API_URL = IS_TESTNET 
             ? "https://testnet-pay.crypto.bot/api/createInvoice"
             : "https://pay.crypto.bot/api/createInvoice";
 
-        // ИСПРАВЛЕНО ПО ПУНКТУ 1:
-        // Мы убрали условие проверки фиата (RUB/USD). Теперь счет ВСЕГДА создается в USDT.
-        // Обрати внимание: цифра цены с сайта пойдет как количество USDT (например, если товар стоил 150 рублей, счет создастся на 150 USDT).
-        // Для теста авторизации токена это абсолютно нормально.
         let invoicePayload = {
             description: productName || "Товар",
             amount: cleanPrice, 
@@ -52,7 +45,6 @@ app.post('/api/create-invoice', async (req, res) => {
             asset: 'USDT' 
         };
 
-        // Отправляем запрос в CryptoBot
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
                 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
@@ -65,15 +57,9 @@ app.post('/api/create-invoice', async (req, res) => {
         const data = response.data;
 
         if (data.ok) {
-            return res.status(200).json({ 
-                success: true, 
-                payUrl: data.result.pay_url 
-            });
+            return res.status(200).json({ success: true, payUrl: data.result.pay_url });
         } else {
-            return res.status(400).json({ 
-                success: false, 
-                error: data.error ? data.error.name : 'CryptoBot API Error' 
-            });
+            return res.status(400).json({ success: false, error: data.error ? data.error.name : 'CryptoBot API Error' });
         }
 
     } catch (error) {
@@ -83,9 +69,13 @@ app.post('/api/create-invoice', async (req, res) => {
             details = JSON.stringify(error.response.data);
         }
         
+        // ДИАГНОСТИКА: вытаскиваем первые цифры токена до двоеточия
+        const tokenID = CRYPTO_BOT_TOKEN ? CRYPTO_BOT_TOKEN.split(':')[0] : 'не найден';
+
+        // Выводим ID токена прямо в ошибку на экран
         return res.status(500).json({ 
             success: false, 
-            error: `Ошибка CryptoBot: ${details}` 
+            error: `Ошибка CryptoBot: ${details} (Сервер сейчас использует Токен ID: ${tokenID})` 
         });
     }
 });
@@ -95,4 +85,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Магазин Amigos запущен. Тестовая сеть: ${IS_TESTNET}`));
+app.listen(PORT, () => console.log(`Магазин Amigos запущен`));
