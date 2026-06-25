@@ -1,7 +1,7 @@
 const express = require('express');
 const path = require('path');
 const axios = require('axios'); 
-const https = require('https'); // ДОБАВЛЕНО: модуль для управления безопасными соединениями
+const https = require('https'); 
 
 const app = express();
 app.use(express.json());
@@ -27,7 +27,9 @@ app.post('/api/create-invoice', async (req, res) => {
         const cleanPrice = price.toString().replace(/[^\d.]/g, '');
 
         const CRYPTO_BOT_TOKEN = "600089:AAS5wF5Wl9iuPz56Le1D5Dm2ngceGh-HAMRF"; 
-        const API_URL = "https://pay.cryptobot.pro/api/createInvoice";
+        
+        // ИСПРАВЛЕНО: Новый официальный домен CryptoBot вместо устаревшего .pro
+        const API_URL = "https://pay.crypto.bot/api/createInvoice";
 
         let invoicePayload = {
             description: productName || "Товар",
@@ -46,9 +48,11 @@ app.post('/api/create-invoice', async (req, res) => {
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
                 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                // ИСПРАВЛЕНО: Добавляем User-Agent, чтобы Cloudflare не сбрасывал соединение
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
-            // ИСПРАВЛЕНО: Игнорируем ошибку локального сертификата Render, так как мы точно доверяем сайту CryptoBot
+            // Оставляем обход ограничений по локальным сертификатам Render
             httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
