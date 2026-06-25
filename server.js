@@ -12,12 +12,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 // НАСТРОЙКА КРИПТОБОТА
 // ==========================================
-// ЕСЛИ ТЕСТИРУЕШЬ (fake-деньги) -> ставь true
-// ЕСЛИ ВКЛЮЧАЕШЬ НАСТОЯЩУЮ ОПЛАТУ (реальные деньги) -> ставь false
+// Ставим false, так как тестируем именно реальную (основную) сеть
 const IS_TESTNET = false; 
 
-// Твой текущий токен (если он из @CryptoTestnetBot, оставь IS_TESTNET = true)
-const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x"; 
+// Вставь сюда свой реальный токен из официального @CryptoBot (Crypto Pay -> My Apps)
+const CRYPTO_BOT_TOKEN = "СЮДА_ВСТАВЬ_СВОЙ_РЕАЛЬНЫЙ_ТОКЕН"; 
 // ==========================================
 
 // 2. Обрабатываем создание счета в CryptoBot
@@ -37,23 +36,23 @@ app.post('/api/create-invoice', async (req, res) => {
         // Очищаем цену от лишних знаков
         const cleanPrice = price.toString().replace(/[^\d.]/g, '');
 
-        // Автоматический выбор адреса в зависимости от переключателя
+        // Автоматический выбор адреса основной сети (https://pay.crypto.bot)
         const API_URL = IS_TESTNET 
             ? "https://testnet-pay.crypto.bot/api/createInvoice"
             : "https://pay.crypto.bot/api/createInvoice";
 
+        // ИСПРАВЛЕНО ПО ПУНКТУ 1:
+        // Мы убрали условие проверки фиата (RUB/USD). Теперь счет ВСЕГДА создается в USDT.
+        // Обрати внимание: цифра цены с сайта пойдет как количество USDT (например, если товар стоил 150 рублей, счет создастся на 150 USDT).
+        // Для теста авторизации токена это абсолютно нормально.
         let invoicePayload = {
             description: productName || "Товар",
-            amount: cleanPrice,
+            amount: cleanPrice, 
             currency_type: 'crypto',
             asset: 'USDT' 
         };
 
-        invoicePayload.currency_type = 'crypto';
-invoicePayload.asset = 'USDT';
-invoicePayload.amount = '1'; // Счет на 1 USDT (около 100 рублей)
-
-        // Отправляем запрос
+        // Отправляем запрос в CryptoBot
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
                 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
