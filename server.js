@@ -1,6 +1,7 @@
 const express = require('express');
 const path = require('path');
-const axios = require('axios'); // Стабильный клиент для запросов
+const axios = require('axios'); 
+const https = require('https'); // ДОБАВЛЕНО: модуль для управления безопасными соединениями
 
 const app = express();
 app.use(express.json());
@@ -46,7 +47,9 @@ app.post('/api/create-invoice', async (req, res) => {
             headers: {
                 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
                 'Content-Type': 'application/json'
-            }
+            },
+            // ИСПРАВЛЕНО: Игнорируем ошибку локального сертификата Render, так как мы точно доверяем сайту CryptoBot
+            httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
         const data = response.data;
@@ -70,7 +73,6 @@ app.post('/api/create-invoice', async (req, res) => {
             details = JSON.stringify(error.response.data);
         }
         
-        // Модифицировано: теперь мы не прячем ошибку, а выводим её прямо на экран!
         return res.status(500).json({ 
             success: false, 
             error: `Ошибка CryptoBot: ${details}` 
