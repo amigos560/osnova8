@@ -49,13 +49,9 @@ app.post('/api/create-invoice', async (req, res) => {
             asset: 'USDT' 
         };
 
-        // Если валюта фиатная, настраиваем параметры под неё
-        if (currency === 'USD' || currency === 'RUB' || currency === '₽' || currency === '$') {
-            invoicePayload.currency_type = 'fiat';
-            // Приводим значки к понятным для API кодам
-            invoicePayload.fiat = (currency === '₽' ? 'RUB' : (currency === '$' ? 'USD' : currency));
-            invoicePayload.accepted_assets = ['USDT', 'TON', 'BTC']; 
-        }
+        invoicePayload.currency_type = 'crypto';
+invoicePayload.asset = 'USDT';
+invoicePayload.amount = '1'; // Счет на 1 USDT (около 100 рублей)
 
         // Отправляем запрос
         const response = await axios.post(API_URL, invoicePayload, {
