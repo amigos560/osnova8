@@ -14,10 +14,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 // ЕСЛИ ТЕСТИРУЕШЬ (fake-деньги) -> ставь true
 // ЕСЛИ ВКЛЮЧАЕШЬ НАСТОЯЩУЮ ОПЛАТУ (реальные деньги) -> ставь false
-const IS_TESTNET = true; 
+const IS_TESTNET = false; 
 
 // Твой текущий токен (если он из @CryptoTestnetBot, оставь IS_TESTNET = true)
-const CRYPTO_BOT_TOKEN = "600089:AAS5wF5Wl9iuPz56Le1D5Dm2ngceGh-HAMRF"; 
+const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x"; 
 // ==========================================
 
 // 2. Обрабатываем создание счета в CryptoBot
