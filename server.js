@@ -41,8 +41,8 @@ app.post('/api/create-invoice', async (req, res) => {
             return res.status(400).json({ success: false, error: "Некорректная сумма товара" });
         }
 
-        // ИСПРАВЛЕНО: Изменено с .com на .org
-        const API_URL = "https://pay.ton-rocket.org/tg-invoices";
+        // ИСПРАВЛЕНО: Установлен правильный домен .io
+        const API_URL = "https://pay.ton-rocket.io/tg-invoices";
 
         // Формируем payload по документации xRocket
         const invoicePayload = {
