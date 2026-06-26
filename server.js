@@ -16,7 +16,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 const X_ROCKET_TOKEN = "0090c64be8a83ecbfcbae9a53"; 
 
 // Какую монету принимать? По умолчанию ставим USDT. 
-// Можно также использовать: 'TON', 'NOT', 'GRAM' и др.
 const PAYMENT_ASSET = 'USDT'; 
 // ==========================================
 
@@ -34,7 +33,7 @@ app.post('/api/create-invoice', async (req, res) => {
             return res.status(400).json({ success: false, error: "Цена не получена от фронтенда" });
         }
 
-        // Очищаем цену от лишних знаков и переводим в число (xRocket требует числовое значение)
+        // Очищаем цену от лишних знаков и переводим в число
         const cleanPriceString = price.toString().replace(/[^\d.]/g, '');
         const finalAmount = parseFloat(cleanPriceString);
 
@@ -42,20 +41,20 @@ app.post('/api/create-invoice', async (req, res) => {
             return res.status(400).json({ success: false, error: "Некорректная сумма товара" });
         }
 
-        // Официальный эндпоинт xRocket для создания Telegram-инвойсов
-        const API_URL = "https://pay.ton-rocket.com/tg-invoices";
+        // ИСПРАВЛЕНО: Изменено с .com на .org
+        const API_URL = "https://pay.ton-rocket.org/tg-invoices";
 
         // Формируем payload по документации xRocket
         const invoicePayload = {
-            amount: finalAmount,      // Сумма (число)
-            token: PAYMENT_ASSET,     // Валюта (например, USDT)
-            description: productName || "Оплата товара" // Описание платежа
+            amount: finalAmount,      
+            token: PAYMENT_ASSET,     
+            description: productName || "Оплата товара" 
         };
 
         // Отправляем запрос в xRocket
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
-                'Rocket-Pay-Key': X_ROCKET_TOKEN, // Авторизация xRocket
+                'Rocket-Pay-Key': X_ROCKET_TOKEN, 
                 'Content-Type': 'application/json',
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
             },
@@ -64,11 +63,10 @@ app.post('/api/create-invoice', async (req, res) => {
 
         const data = response.data;
 
-        // xRocket возвращает ответ в формате { success: true, data: { link: "...", ... } }
         if (data.success && data.data && data.data.link) {
             return res.status(200).json({ 
                 success: true, 
-                payUrl: data.data.link // Ссылка на оплату внутри Telegram
+                payUrl: data.data.link 
             });
         } else {
             return res.status(400).json({ 
@@ -96,4 +94,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Магазин Amigos переведен на xRocket и запущен на порту ${PORT}`));
+app.listen(PORT, () => console.log(`Магазин Amigos запущен на порту ${PORT}`));
