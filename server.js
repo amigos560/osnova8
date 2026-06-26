@@ -12,11 +12,9 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ==========================================
 // НАСТРОЙКА КРИПТОБОТА
 // ==========================================
-// ЕСЛИ ТЕСТИРУЕШЬ (виртуальные коины) -> ставь true
-// ЕСЛИ ВКЛЮЧАЕШЬ НАСТОЯЩУЮ ОПЛАТУ (реальные деньги) -> ставь false
 const IS_TESTNET = false; 
 
-// Твой токен (из @CryptoTestnetBot если IS_TESTNET = true, или из @CryptoBot если false)
+// Твой реальный токен из официального @CryptoBot
 const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x"; 
 // ==========================================
 
@@ -28,7 +26,7 @@ app.post('/api/create-invoice', async (req, res) => {
             body = JSON.parse(body);
         }
 
-        const { productName, price, currency } = body;
+        const { productName, price } = body;
 
         if (!price) {
             return res.status(400).json({ success: false, error: "Цена не получена от фронтенда" });
@@ -37,34 +35,26 @@ app.post('/api/create-invoice', async (req, res) => {
         // Очищаем цену от лишних знаков
         const cleanPrice = price.toString().replace(/[^\d.]/g, '');
 
-        // ИСПРАВЛЕНО НА ВЕКА: Абсолютно точные, официальные API-адреса CryptoBot
+        // Официальные и рабочие домены .pro
         const API_URL = IS_TESTNET 
             ? "https://testnet-pay.cryptobot.pro/api/createInvoice"
             : "https://pay.cryptobot.pro/api/createInvoice";
 
+        // СТРОГО КРИПТОВАЛЮТА (USDT): Работает у всех без верификации
         let invoicePayload = {
             description: productName || "Товар",
             amount: cleanPrice,
             currency_type: 'crypto',
-            asset: 'USDT' // По умолчанию выставляем счет в USDT, так как он доступен всем без верификации мерчанта
+            asset: 'USDT' 
         };
-
-        // Если аккаунт верифицирован в CryptoBot на прием фиата (рублей/долларов), этот блок сработает:
-        if (currency === 'USD' || currency === 'RUB' || currency === '₽' || currency === '$') {
-            invoicePayload.currency_type = 'fiat';
-            invoicePayload.fiat = (currency === '₽' ? 'RUB' : (currency === '$' ? 'USD' : currency));
-            invoicePayload.accepted_assets = ['USDT', 'TON', 'BTC']; 
-        }
 
         // Отправляем запрос в CryptoBot
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
                 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
                 'Content-Type': 'application/json',
-                // Наша маскировка под настоящий браузер Chrome, чтобы Cloudflare не сбрасывал соединение
                 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
-            // Наш агент для обхода строгих локальных сертификатов Render
             httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
@@ -76,9 +66,11 @@ app.post('/api/create-invoice', async (req, res) => {
                 payUrl: data.result.pay_url 
             });
         } else {
+            // Расширенная диагностика ошибки от API
+            const apiError = data.error ? `${data.error.name} (код ${data.error.code})` : 'Неизвестная ошибка CryptoBot';
             return res.status(400).json({ 
                 success: false, 
-                error: data.error ? data.error.name : 'CryptoBot API Error' 
+                error: apiError 
             });
         }
 
@@ -101,4 +93,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Магазин Amigos успешно запущен на порту ${PORT}`));
+app.listen(PORT, () => console.log(`Магазин Amigos успешно запущен`));
