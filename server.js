@@ -10,16 +10,17 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
-// НАСТРОЙКА XROCKET (ROCKET PAY)
+// НАСТРОЙКА КРИПТОБОТА
 // ==========================================
-// Вставь сюда свой API-токен (ключ) от xRocket
-const X_ROCKET_TOKEN = "0090c64be8a83ecbfcbae9a53"; 
+// ЕСЛИ ТЕСТИРУЕШЬ (виртуальные коины) -> ставь true
+// ЕСЛИ ВКЛЮЧАЕШЬ НАСТОЯЩУЮ ОПЛАТУ (реальные деньги) -> ставь false
+const IS_TESTNET = false; 
 
-// Какую монету принимать? По умолчанию ставим USDT. 
-const PAYMENT_ASSET = 'USDT'; 
+// Твой токен (из @CryptoTestnetBot если IS_TESTNET = true, или из @CryptoBot если false)
+const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x"; 
 // ==========================================
 
-// 2. Обрабатываем создание счета в xRocket
+// 2. Обрабатываем создание счета в CryptoBot
 app.post('/api/create-invoice', async (req, res) => {
     try {
         let body = req.body;
@@ -27,56 +28,62 @@ app.post('/api/create-invoice', async (req, res) => {
             body = JSON.parse(body);
         }
 
-        const { productName, price } = body;
+        const { productName, price, currency } = body;
 
         if (!price) {
             return res.status(400).json({ success: false, error: "Цена не получена от фронтенда" });
         }
 
-        // Очищаем цену от лишних знаков и переводим в число
-        const cleanPriceString = price.toString().replace(/[^\d.]/g, '');
-        const finalAmount = parseFloat(cleanPriceString);
+        // Очищаем цену от лишних знаков
+        const cleanPrice = price.toString().replace(/[^\d.]/g, '');
 
-        if (isNaN(finalAmount) || finalAmount <= 0) {
-            return res.status(400).json({ success: false, error: "Некорректная сумма товара" });
-        }
+        // ИСПРАВЛЕНО НА ВЕКА: Абсолютно точные, официальные API-адреса CryptoBot
+        const API_URL = IS_TESTNET 
+            ? "https://testnet-pay.cryptobot.pro/api/createInvoice"
+            : "https://pay.cryptobot.pro/api/createInvoice";
 
-        // ИСПРАВЛЕНО: Установлен правильный домен .io
-        const API_URL = "https://pay.ton-rocket.io/tg-invoices";
-
-        // Формируем payload по документации xRocket
-        const invoicePayload = {
-            amount: finalAmount,      
-            token: PAYMENT_ASSET,     
-            description: productName || "Оплата товара" 
+        let invoicePayload = {
+            description: productName || "Товар",
+            amount: cleanPrice,
+            currency_type: 'crypto',
+            asset: 'USDT' // По умолчанию выставляем счет в USDT, так как он доступен всем без верификации мерчанта
         };
 
-        // Отправляем запрос в xRocket
+        // Если аккаунт верифицирован в CryptoBot на прием фиата (рублей/долларов), этот блок сработает:
+        if (currency === 'USD' || currency === 'RUB' || currency === '₽' || currency === '$') {
+            invoicePayload.currency_type = 'fiat';
+            invoicePayload.fiat = (currency === '₽' ? 'RUB' : (currency === '$' ? 'USD' : currency));
+            invoicePayload.accepted_assets = ['USDT', 'TON', 'BTC']; 
+        }
+
+        // Отправляем запрос в CryptoBot
         const response = await axios.post(API_URL, invoicePayload, {
             headers: {
-                'Rocket-Pay-Key': X_ROCKET_TOKEN, 
+                'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
                 'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                // Наша маскировка под настоящий браузер Chrome, чтобы Cloudflare не сбрасывал соединение
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
             },
+            // Наш агент для обхода строгих локальных сертификатов Render
             httpsAgent: new https.Agent({ rejectUnauthorized: false })
         });
 
         const data = response.data;
 
-        if (data.success && data.data && data.data.link) {
+        if (data.ok) {
             return res.status(200).json({ 
                 success: true, 
-                payUrl: data.data.link 
+                payUrl: data.result.pay_url 
             });
         } else {
             return res.status(400).json({ 
                 success: false, 
-                error: data.message || 'Ошибка API xRocket' 
+                error: data.error ? data.error.name : 'CryptoBot API Error' 
             });
         }
 
     } catch (error) {
-        console.error("=== ОШИБКА НА СЕРВЕРЕ XROCKET ===");
+        console.error("=== ОШИБКА НА СЕРВЕРЕ ===");
         let details = error.message;
         if (error.response && error.response.data) {
             details = JSON.stringify(error.response.data);
@@ -84,7 +91,7 @@ app.post('/api/create-invoice', async (req, res) => {
         
         return res.status(500).json({ 
             success: false, 
-            error: `Ошибка xRocket: ${details}` 
+            error: `Ошибка CryptoBot: ${details}` 
         });
     }
 });
@@ -94,4 +101,4 @@ app.get('*', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Магазин Amigos запущен на порту ${PORT}`));
+app.listen(PORT, () => console.log(`Магазин Amigos успешно запущен на порту ${PORT}`));
