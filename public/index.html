@@ -1,667 +1,988 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Amigos Shop — Магазин топовых аккаунтов Facebook & Google</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔵</text></svg>">
-    <style>
-        :root {
-            --bg-main: #0b0f19;
-            --bg-card: #131a26;
-            --bg-sidebar: #111823;
-            --text-main: #f3f4f6;
-            --text-muted: #9ca3af;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --accent-gradient: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            --border-color: #1f2937;
-            --price-color: #10b981;
-            --alert-bg: rgba(59, 130, 246, 0.1);
-            --alert-border: rgba(59, 130, 246, 0.3);
-            --alert-text: #3b82f6;
-        }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Amigos Shop — Facebook & Google аккаунты</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔵</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@600&display=swap" rel="stylesheet">
+<style>
+/* ═══════════════════════════════
+   ТОКЕНЫ
+═══════════════════════════════ */
+:root {
+  --bg:         #060a12;
+  --bg-card:    #0d1420;
+  --bg-card-2:  #111927;
+  --bg-hover:   #141d2e;
+  --border:     rgba(255,255,255,0.06);
+  --border-hi:  rgba(0,212,255,0.2);
 
-        * { box-sizing: border-box; margin: 0; padding: 0; scroll-behavior: smooth; }
+  --cyan:       #00d4ff;
+  --cyan-dim:   #0099cc;
+  --cyan-glow:  rgba(0,212,255,0.12);
+  --green:      #00e5a0;
+  --green-dim:  rgba(0,229,160,0.08);
+  --red:        #ff5e6c;
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: var(--bg-main);
-            color: var(--text-main);
-            line-height: 1.5;
-        }
+  --text:       #e8edf5;
+  --text-2:     #7a8899;
+  --text-3:     #4a5568;
 
-        /* ── Бегущая строка (исправлен бесшовный луп) ── */
-        .marquee-container {
-            background: linear-gradient(90deg, #1e3a8a 0%, #0f172a 100%);
-            color: #fff;
-            padding: 10px 0;
-            overflow: hidden;
-            white-space: nowrap;
-            border-bottom: 1px solid var(--border-color);
-            font-size: 0.85rem;
-            font-weight: 500;
-        }
-        .marquee-track {
-            display: inline-flex;
-            animation: marquee 40s linear infinite;
-        }
-        .marquee-track:hover { animation-play-state: paused; }
-        .marquee-item { display: inline-block; margin-right: 60px; flex-shrink: 0; }
-        .marquee-item span { color: var(--price-color); font-weight: bold; }
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
 
-        @keyframes marquee {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
+  --font-head: 'Space Grotesk', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
 
-        /* ── Шапка ── */
-        header {
-            border-bottom: 1px solid var(--border-color);
-            padding: 18px 20px;
-            position: sticky;
-            top: 0;
-            z-index: 100;
-            backdrop-filter: blur(10px);
-            background-color: rgba(19, 26, 38, 0.92);
-        }
-        .header-container {
-            max-width: 1400px;
-            margin: 0 auto;
-            display: flex;
-            align-items: center;
-            gap: 20px;
-        }
-        .header-left { flex-shrink: 0; }
-        .logo {
-            font-size: 1.4rem;
-            font-weight: 800;
-            color: #fff;
-            text-decoration: none;
-            letter-spacing: -0.5px;
-        }
-        .logo span {
-            background: var(--accent-gradient);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .header-center { flex: 1; }
-        .search-bar input {
-            width: 100%;
-            max-width: 500px;
-            padding: 11px 18px;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            font-size: 0.9rem;
-            outline: none;
-            background-color: #0b0f19;
-            color: #fff;
-            transition: border-color 0.2s;
-        }
-        .search-bar input:focus { border-color: var(--accent); }
-        .header-right { flex-shrink: 0; }
-        .header-contacts a {
-            display: inline-block;
-            background: var(--accent-gradient);
-            color: #fff;
-            padding: 11px 20px;
-            border-radius: 8px;
-            text-decoration: none;
-            font-weight: 600;
-            font-size: 0.85rem;
-            transition: opacity 0.2s;
-            box-shadow: 0 4px 12px rgba(59,130,246,0.25);
-        }
-        .header-contacts a:hover { opacity: 0.85; }
+/* ═══════════════════════════════
+   СБРОС И BASE
+═══════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-        /* ── Основная сетка ── */
-        .main-wrapper {
-            max-width: 1400px;
-            margin: 40px auto;
-            padding: 0 20px;
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-        }
+html { scroll-behavior: smooth; }
 
-        /* ── Сайдбар ── */
-        .layout-sidebar { flex: 0 0 260px; position: sticky; top: 98px; }
-        .sidebar {
-            background-color: var(--bg-sidebar);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            padding: 20px;
-        }
-        .sidebar h3 {
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 1.2px;
-            margin-bottom: 14px;
-            color: var(--text-muted);
-            padding-bottom: 10px;
-            border-bottom: 1px solid var(--border-color);
-        }
-        .category-list { list-style: none; }
-        .category-list li { margin-bottom: 4px; }
-        .category-list li a {
-            display: block;
-            padding: 9px 12px;
-            color: var(--text-main);
-            text-decoration: none;
-            border-radius: 6px;
-            font-size: 0.88rem;
-            transition: all 0.18s;
-        }
-        .category-list li a:hover {
-            background-color: rgba(59,130,246,0.12);
-            color: var(--accent);
-            font-weight: 600;
-            padding-left: 16px;
-        }
+body {
+  font-family: var(--font-body);
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
 
-        /* ── Основной контент ── */
-        .layout-content { flex: 1; min-width: 0; }
+/* Сеточный фоновый паттерн — сигнатурный элемент */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
 
-        /* ── Плашка статуса ── */
-        .payment-alert {
-            background-color: var(--alert-bg);
-            border: 1px solid var(--alert-border);
-            color: var(--alert-text);
-            padding: 16px 20px;
-            border-radius: 12px;
-            margin-bottom: 30px;
-            font-weight: 500;
-            font-size: 0.95rem;
-            text-align: center;
-            transition: color 0.3s, background-color 0.3s;
-        }
+body > * { position: relative; z-index: 1; }
 
-        /* ── Блоки каталога ── */
-        .category-block { margin-bottom: 48px; scroll-margin-top: 115px; }
-        .category-block h3 {
-            font-size: 1.35rem;
-            margin-bottom: 14px;
-            color: #fff;
-            border-left: 4px solid var(--accent);
-            padding-left: 12px;
-        }
+/* ═══════════════════════════════
+   БЕГУЩАЯ СТРОКА
+═══════════════════════════════ */
+.ticker {
+  background: linear-gradient(90deg, #020c18 0%, #071020 50%, #020c18 100%);
+  border-bottom: 1px solid var(--border-hi);
+  padding: 9px 0;
+  overflow: hidden;
+  white-space: nowrap;
+  font-size: 0.8rem;
+  font-family: var(--font-body);
+  font-weight: 500;
+}
 
-        /* Заголовок скрывается если все товары в категории спрятаны поиском */
-        .category-block.hidden { display: none; }
+.ticker-track {
+  display: inline-flex;
+  animation: ticker 45s linear infinite;
+}
+.ticker-track:hover { animation-play-state: paused; }
 
-        .product-list {
-            background-color: var(--bg-card);
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            overflow: hidden;
-        }
+.ticker-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 70px;
+  flex-shrink: 0;
+  color: var(--text-2);
+}
+.ticker-item strong { color: var(--cyan); font-weight: 600; }
+.ticker-item .badge {
+  background: var(--green-dim);
+  color: var(--green);
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  border: 1px solid rgba(0,229,160,0.2);
+}
 
-        /* ── Строка товара ── */
-        .product-row {
-            display: flex;
-            align-items: center;
-            gap: 20px;
-            padding: 22px 25px;
-            border-bottom: 1px solid var(--border-color);
-            transition: background 0.2s;
-        }
-        .product-row:last-child { border-bottom: none; }
-        .product-row:hover { background-color: rgba(255,255,255,0.02); }
-        .product-row.hidden { display: none; }
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
 
-        .p-info { flex: 1; min-width: 0; }
-        .p-info h4 { font-size: 1rem; color: #fff; margin-bottom: 5px; font-weight: 600; }
-        .p-info > p { font-size: 0.85rem; color: var(--text-muted); }
+/* ═══════════════════════════════
+   ШАПКА
+═══════════════════════════════ */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 200;
+  background: rgba(6,10,18,0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-bottom: 1px solid var(--border);
+}
 
-        .details-box {
-            display: none;
-            background-color: #0b0f19;
-            border: 1px dashed var(--border-color);
-            border-radius: 6px;
-            padding: 14px;
-            margin-top: 12px;
-            font-size: 0.85rem;
-            color: #d1d5db;
-            line-height: 1.6;
-        }
-        .details-box ul { padding-left: 18px; margin-top: 5px; }
+.header-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 0 24px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
 
-        .p-stock { flex: 0 0 120px; font-size: 0.83rem; color: var(--text-muted); }
-        .p-stock span { color: var(--price-color); font-weight: 600; display: block; font-size: 0.92rem; margin-top: 2px; }
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+.logo-icon {
+  width: 34px;
+  height: 34px;
+  background: linear-gradient(135deg, var(--cyan), var(--cyan-dim));
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  box-shadow: 0 0 16px rgba(0,212,255,0.3);
+}
+.logo-text {
+  font-family: var(--font-head);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+.logo-text em {
+  font-style: normal;
+  color: var(--cyan);
+}
 
-        .p-action { flex: 0 0 170px; text-align: right; }
-        .product-price {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: var(--price-color);
-            margin-bottom: 8px;
-            letter-spacing: -0.5px;
-        }
-        /* Подсказка курса для рублёвых товаров */
-        .price-hint {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-            margin-bottom: 8px;
-            margin-top: -4px;
-        }
+.search-wrap { flex: 1; max-width: 420px; position: relative; }
+.search-wrap svg {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 16px;
+  height: 16px;
+  color: var(--text-3);
+  pointer-events: none;
+}
+.search-input {
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 9px 14px 9px 38px;
+  color: var(--text);
+  font-size: 0.88rem;
+  font-family: var(--font-body);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.search-input::placeholder { color: var(--text-3); }
+.search-input:focus {
+  border-color: var(--border-hi);
+  box-shadow: 0 0 0 3px var(--cyan-glow);
+}
 
-        .btn-group { display: flex; gap: 8px; justify-content: flex-end; }
-        .btn-desc {
-            background-color: #1f2937;
-            color: #fff;
-            border: 1px solid #374151;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.18s;
-            flex: 1;
-        }
-        .btn-desc:hover { background-color: #374151; }
-        .btn-buy {
-            background: var(--accent-gradient);
-            color: #fff;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 6px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: opacity 0.18s, transform 0.1s;
-            flex: 1.2;
-        }
-        .btn-buy:hover { opacity: 0.88; }
-        .btn-buy:active { transform: scale(0.97); }
-        .btn-buy:disabled { opacity: 0.5; cursor: not-allowed; }
+.header-right { margin-left: auto; flex-shrink: 0; }
 
-        /* ── Поисковая пустышка ── */
-        .no-results {
-            display: none;
-            text-align: center;
-            padding: 50px 20px;
-            color: var(--text-muted);
-            font-size: 1rem;
-        }
-        .no-results.visible { display: block; }
+.btn-tg {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dim) 100%);
+  color: #060a12;
+  font-family: var(--font-head);
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 9px 18px;
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  transition: opacity 0.2s, transform 0.15s;
+  box-shadow: 0 4px 20px rgba(0,212,255,0.25);
+}
+.btn-tg:hover { opacity: 0.88; transform: translateY(-1px); }
+.btn-tg svg { width: 16px; height: 16px; }
 
-        /* ── Футер ── */
-        footer {
-            background-color: var(--bg-sidebar);
-            border-top: 1px solid var(--border-color);
-            padding: 40px 20px;
-            text-align: center;
-            margin-top: 80px;
-            font-size: 0.85rem;
-            color: var(--text-muted);
-        }
-        footer a { color: #fff; text-decoration: none; font-weight: 600; }
-        footer a:hover { color: var(--accent); }
+/* ═══════════════════════════════
+   ОСНОВНАЯ СЕТКА
+═══════════════════════════════ */
+.page {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 32px 24px 80px;
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 28px;
+  align-items: start;
+}
 
-        /* ── Адаптив ── */
-        @media (max-width: 960px) {
-            .main-wrapper { flex-direction: column; }
-            .layout-sidebar { flex: none; width: 100%; position: static; }
-            .header-container { flex-wrap: wrap; }
-            .header-center { flex: 1 1 100%; order: 3; }
-            .header-right { margin-left: auto; }
-        }
-        @media (max-width: 640px) {
-            .product-row { flex-wrap: wrap; }
-            .p-stock { flex: 1 1 50%; }
-            .p-action { flex: 1 1 50%; text-align: right; }
-            .btn-group { justify-content: flex-end; }
-        }
-    </style>
+/* ═══════════════════════════════
+   САЙДБАР — ДЕСКТОП
+═══════════════════════════════ */
+.sidebar {
+  position: sticky;
+  top: 88px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sidebar-label {
+  font-size: 0.7rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1.4px;
+  color: var(--text-3);
+  padding: 0 8px;
+  margin-bottom: 8px;
+}
+
+.cat-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: var(--r-sm);
+  text-decoration: none;
+  color: var(--text-2);
+  font-size: 0.86rem;
+  font-weight: 500;
+  transition: all 0.18s;
+  border: 1px solid transparent;
+}
+.cat-link:hover {
+  color: var(--cyan);
+  background: var(--cyan-glow);
+  border-color: var(--border-hi);
+  padding-left: 14px;
+}
+.cat-link .cat-icon { font-size: 1rem; flex-shrink: 0; }
+
+/* ═══════════════════════════════
+   МОБИЛЬНЫЙ САЙДБАР (chips)
+═══════════════════════════════ */
+.mobile-cats {
+  display: none;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  gap: 8px;
+  padding: 0 0 4px;
+  scrollbar-width: none;
+  margin-bottom: 20px;
+}
+.mobile-cats::-webkit-scrollbar { display: none; }
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  padding: 7px 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  color: var(--text-2);
+  font-size: 0.82rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+.chip:hover {
+  border-color: var(--border-hi);
+  color: var(--cyan);
+  background: var(--cyan-glow);
+}
+
+/* ═══════════════════════════════
+   СТАТУС-АЛЁРТ
+═══════════════════════════════ */
+.status-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: var(--cyan-glow);
+  border: 1px solid var(--border-hi);
+  border-radius: var(--r-md);
+  padding: 14px 20px;
+  margin-bottom: 28px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--cyan);
+  transition: all 0.3s;
+  text-align: center;
+}
+.status-bar .dot {
+  width: 8px; height: 8px;
+  background: var(--cyan);
+  border-radius: 50%;
+  flex-shrink: 0;
+  box-shadow: 0 0 8px var(--cyan);
+  animation: pulse-dot 2s ease-in-out infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.7); }
+}
+
+/* ═══════════════════════════════
+   КАТЕГОРИЯ + ПРОДУКТЫ
+═══════════════════════════════ */
+.cat-block {
+  margin-bottom: 44px;
+  scroll-margin-top: 100px;
+}
+.cat-block.hidden { display: none; }
+
+.cat-title {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--font-head);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 14px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.cat-title-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+.cat-count {
+  margin-left: auto;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  color: var(--text-3);
+  background: var(--bg-card-2);
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid var(--border);
+}
+
+.product-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ═══════════════════════════════
+   КАРТОЧКА ТОВАРА
+═══════════════════════════════ */
+.product-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  padding: 20px 22px;
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 20px;
+  align-items: center;
+  transition: border-color 0.2s, background 0.2s, transform 0.15s;
+  position: relative;
+  overflow: hidden;
+}
+.product-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0;
+  width: 3px; height: 100%;
+  background: linear-gradient(to bottom, var(--cyan), var(--cyan-dim));
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.product-card:hover {
+  border-color: var(--border-hi);
+  background: var(--bg-hover);
+  transform: translateX(2px);
+}
+.product-card:hover::before { opacity: 1; }
+.product-card.hidden { display: none; }
+
+.p-name {
+  font-family: var(--font-head);
+  font-size: 0.97rem;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 5px;
+  line-height: 1.3;
+}
+.p-desc {
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.details-box {
+  display: none;
+  margin-top: 14px;
+  padding: 14px 16px;
+  background: rgba(0,212,255,0.04);
+  border: 1px dashed rgba(0,212,255,0.15);
+  border-radius: var(--r-sm);
+  font-size: 0.82rem;
+  color: var(--text-2);
+  line-height: 1.6;
+}
+.details-box strong { color: var(--cyan); font-weight: 600; }
+
+/* Наличие */
+.p-stock-col {
+  text-align: center;
+  min-width: 100px;
+}
+.stock-label {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 3px;
+}
+.stock-count {
+  font-family: var(--font-mono);
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--green);
+}
+
+/* Цена + кнопки */
+.p-action-col {
+  text-align: right;
+  min-width: 160px;
+}
+.price-rub {
+  font-size: 0.72rem;
+  color: var(--text-3);
+  margin-bottom: 1px;
+}
+.price-main {
+  font-family: var(--font-mono);
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--green);
+  letter-spacing: -0.5px;
+  line-height: 1;
+  margin-bottom: 12px;
+}
+
+.btn-row { display: flex; gap: 8px; justify-content: flex-end; }
+
+.btn {
+  padding: 8px 14px;
+  border-radius: var(--r-sm);
+  font-size: 0.8rem;
+  font-weight: 600;
+  font-family: var(--font-head);
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s;
+  white-space: nowrap;
+}
+
+.btn-info {
+  background: transparent;
+  color: var(--text-2);
+  border: 1px solid var(--border);
+}
+.btn-info:hover { border-color: var(--border-hi); color: var(--text); background: var(--bg-card-2); }
+
+.btn-pay {
+  background: linear-gradient(135deg, var(--cyan) 0%, var(--cyan-dim) 100%);
+  color: #060a12;
+  box-shadow: 0 4px 14px rgba(0,212,255,0.2);
+}
+.btn-pay:hover { box-shadow: 0 6px 20px rgba(0,212,255,0.35); transform: translateY(-1px); }
+.btn-pay:active { transform: scale(0.97); }
+.btn-pay:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ═══════════════════════════════
+   ПУСТОЙ ПОИСК
+═══════════════════════════════ */
+.empty {
+  display: none;
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--text-3);
+}
+.empty.visible { display: block; }
+.empty-icon { font-size: 2.5rem; margin-bottom: 12px; }
+.empty p { font-size: 0.95rem; }
+
+/* ═══════════════════════════════
+   ФУТЕР
+═══════════════════════════════ */
+footer {
+  border-top: 1px solid var(--border);
+  padding: 36px 24px;
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-3);
+  background: var(--bg-card);
+}
+footer a { color: var(--text-2); text-decoration: none; transition: color 0.18s; }
+footer a:hover { color: var(--cyan); }
+.footer-inner { max-width: 1360px; margin: 0 auto; }
+
+/* ═══════════════════════════════
+   АДАПТИВ
+═══════════════════════════════ */
+@media (max-width: 900px) {
+  .page {
+    grid-template-columns: 1fr;
+    padding: 20px 16px 60px;
+    gap: 0;
+  }
+  .sidebar { display: none; }
+  .mobile-cats { display: flex; }
+}
+
+@media (max-width: 640px) {
+  .header-inner { padding: 0 16px; gap: 12px; }
+  .logo-text { font-size: 1rem; }
+  .search-wrap { max-width: none; }
+  .btn-tg span { display: none; }
+
+  .product-card {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+  .p-stock-col { text-align: left; display: flex; align-items: center; gap: 12px; }
+  .stock-label { margin-bottom: 0; }
+  .p-action-col { text-align: left; }
+  .price-main { font-size: 1.2rem; }
+  .btn-row { justify-content: flex-start; }
+
+  .cat-title { font-size: 1.05rem; }
+}
+
+@media (max-width: 400px) {
+  .btn { padding: 8px 10px; font-size: 0.77rem; }
+}
+
+/* prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+  .dot { animation: none; }
+  * { transition-duration: 0.01ms !important; }
+}
+</style>
 </head>
 <body>
 
-<!-- ═══ Бегущая строка (дублируем блоки для бесшовного лупа) ═══ -->
-<div class="marquee-container" aria-hidden="true">
-    <div class="marquee-track">
-        <!-- Первая копия -->
-        <div class="marquee-item">⭐ <strong>@arbitrazh_pro:</strong> Лучший фарм под первобилы, спенд летит на ура! Беру только тут. <span>+ Доволен</span></div>
-        <div class="marquee-item">⭐ <strong>@team_lead_fb:</strong> ПЗРД Кинги просто неубиваемые, доки залетают мгновенно. Спасибо за качество! <span>+ Рекомендую</span></div>
-        <div class="marquee-item">⭐ <strong>@vlad_cpa:</strong> Саппорт amigospeso отвечает за минуту, оперативно решил вопрос с заменой. Отличный сервис! <span>+ Топ</span></div>
-        <div class="marquee-item">⭐ <strong>@google_king:</strong> Аккаунты Гугла с открутом — пушка, биллинги вяжутся с первой попытки! <span>+ Респект</span></div>
-        <div class="marquee-item">⭐ <strong>@mediabuy_agency:</strong> Закупили пачку авторегов, валид 100%. Будем сотрудничать на постоянке. <span>+ 5 звёзд</span></div>
-        <!-- Вторая копия (точная) — нужна для бесшовного лупа -->
-        <div class="marquee-item">⭐ <strong>@arbitrazh_pro:</strong> Лучший фарм под первобилы, спенд летит на ура! Беру только тут. <span>+ Доволен</span></div>
-        <div class="marquee-item">⭐ <strong>@team_lead_fb:</strong> ПЗРД Кинги просто неубиваемые, доки залетают мгновенно. Спасибо за качество! <span>+ Рекомендую</span></div>
-        <div class="marquee-item">⭐ <strong>@vlad_cpa:</strong> Саппорт amigospeso отвечает за минуту, оперативно решил вопрос с заменой. Отличный сервис! <span>+ Топ</span></div>
-        <div class="marquee-item">⭐ <strong>@google_king:</strong> Аккаунты Гугла с открутом — пушка, биллинги вяжутся с первой попытки! <span>+ Респект</span></div>
-        <div class="marquee-item">⭐ <strong>@mediabuy_agency:</strong> Закупили пачку авторегов, валид 100%. Будем сотрудничать на постоянке. <span>+ 5 звёзд</span></div>
-    </div>
+<!-- ═══ БЕГУЩАЯ СТРОКА ═══ -->
+<div class="ticker" aria-hidden="true">
+  <div class="ticker-track">
+    <!-- копия 1 -->
+    <div class="ticker-item"><strong>@arbitrazh_pro</strong> Лучший фарм под первобилы, спенд летит на ура! <span class="badge">✓ Доволен</span></div>
+    <div class="ticker-item"><strong>@team_lead_fb</strong> ПЗРД Кинги просто неубиваемые, доки залетают мгновенно. <span class="badge">✓ Рекомендую</span></div>
+    <div class="ticker-item"><strong>@vlad_cpa</strong> Саппорт amigospeso ответил за минуту, оперативно решил вопрос. <span class="badge">✓ Топ</span></div>
+    <div class="ticker-item"><strong>@google_king</strong> Аккаунты Google с открутом — биллинги вяжутся с первой попытки! <span class="badge">✓ Респект</span></div>
+    <div class="ticker-item"><strong>@mediabuy_agency</strong> Закупили пачку авторегов, валид 100%. Берём на постоянке. <span class="badge">✓ 5 звёзд</span></div>
+    <!-- копия 2 (бесшовный луп) -->
+    <div class="ticker-item"><strong>@arbitrazh_pro</strong> Лучший фарм под первобилы, спенд летит на ура! <span class="badge">✓ Доволен</span></div>
+    <div class="ticker-item"><strong>@team_lead_fb</strong> ПЗРД Кинги просто неубиваемые, доки залетают мгновенно. <span class="badge">✓ Рекомендую</span></div>
+    <div class="ticker-item"><strong>@vlad_cpa</strong> Саппорт amigospeso ответил за минуту, оперативно решил вопрос. <span class="badge">✓ Топ</span></div>
+    <div class="ticker-item"><strong>@google_king</strong> Аккаунты Google с открутом — биллинги вяжутся с первой попытки! <span class="badge">✓ Респект</span></div>
+    <div class="ticker-item"><strong>@mediabuy_agency</strong> Закупили пачку авторегов, валид 100%. Берём на постоянке. <span class="badge">✓ 5 звёзд</span></div>
+  </div>
 </div>
 
-<!-- ═══ Шапка ═══ -->
-<header>
-    <div class="header-container">
-        <div class="header-left">
-            <a href="#" class="logo">🔵 AMIGOS <span>SHOP</span></a>
-        </div>
-        <div class="header-center">
-            <div class="search-bar">
-                <input type="text" id="search-input" placeholder="Быстрый поиск по названию..." autocomplete="off">
-            </div>
-        </div>
-        <div class="header-right">
-            <div class="header-contacts">
-                <a href="https://t.me/amigospeso" target="_blank" rel="noopener">Связаться: @amigospeso</a>
-            </div>
-        </div>
+<!-- ═══ ШАПКА ═══ -->
+<header class="header">
+  <div class="header-inner">
+    <a href="#" class="logo" aria-label="Amigos Shop — на главную">
+      <div class="logo-icon">🔵</div>
+      <span class="logo-text">AMIGOS <em>SHOP</em></span>
+    </a>
+
+    <div class="search-wrap">
+      <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+        <circle cx="9" cy="9" r="5.5"/><path d="M14 14l3 3" stroke-linecap="round"/>
+      </svg>
+      <input class="search-input" id="search-input" type="search"
+             placeholder="Поиск по товарам..." autocomplete="off" spellcheck="false">
     </div>
+
+    <div class="header-right">
+      <a class="btn-tg" href="https://t.me/amigospeso" target="_blank" rel="noopener">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.91c-.12.58-.46.72-.93.45l-2.58-1.9-1.24 1.2c-.14.14-.26.26-.52.26l.19-2.63 4.8-4.34c.21-.19-.05-.29-.32-.1l-5.93 3.73-2.55-.8c-.55-.17-.56-.55.12-.82l9.96-3.84c.46-.17.86.11.71.88z"/>
+        </svg>
+        <span>@amigospeso</span>
+      </a>
+    </div>
+  </div>
 </header>
 
-<div class="main-wrapper">
+<!-- ═══ СТРАНИЦА ═══ -->
+<div class="page">
 
-    <!-- ═══ Сайдбар ═══ -->
-    <div class="layout-sidebar">
-        <aside class="sidebar">
-            <h3>Категории</h3>
-            <ul class="category-list">
-                <li><a href="#cat-tgads">Telegram Ads Кабинеты</a></li>
-                <li><a href="#cat-farm">Farm Аккаунты FB</a></li>
-                <li><a href="#cat-king">Кинг аккаунты FB</a></li>
-                <li><a href="#cat-bm">Бизнес Менеджеры FB</a></li>
-                <li><a href="#cat-autoreg">Автореги / Самореги</a></li>
-                <li><a href="#cat-google">Google Ads Аккаунты</a></li>
-            </ul>
-        </aside>
+  <!-- Сайдбар (десктоп) -->
+  <aside class="sidebar" aria-label="Категории товаров">
+    <div class="sidebar-label">Категории</div>
+    <a class="cat-link" href="#cat-tgads"><span class="cat-icon">📡</span> Telegram Ads</a>
+    <a class="cat-link" href="#cat-farm"><span class="cat-icon">🌱</span> Farm FB</a>
+    <a class="cat-link" href="#cat-king"><span class="cat-icon">👑</span> King FB</a>
+    <a class="cat-link" href="#cat-bm"><span class="cat-icon">🏢</span> Бизнес Менеджеры</a>
+    <a class="cat-link" href="#cat-autoreg"><span class="cat-icon">⚡</span> Автореги</a>
+    <a class="cat-link" href="#cat-google"><span class="cat-icon">🔍</span> Google Ads</a>
+  </aside>
+
+  <!-- Основной контент -->
+  <main>
+
+    <!-- Чипы (мобайл) -->
+    <nav class="mobile-cats" aria-label="Категории">
+      <a class="chip" href="#cat-tgads">📡 Telegram Ads</a>
+      <a class="chip" href="#cat-farm">🌱 Farm FB</a>
+      <a class="chip" href="#cat-king">👑 King FB</a>
+      <a class="chip" href="#cat-bm">🏢 Бизнес Менеджеры</a>
+      <a class="chip" href="#cat-autoreg">⚡ Автореги</a>
+      <a class="chip" href="#cat-google">🔍 Google Ads</a>
+    </nav>
+
+    <!-- Статус-бар -->
+    <div class="status-bar" id="status-alert" role="status" aria-live="polite">
+      <span class="dot"></span>
+      <span>Автоматическая оплата через CryptoBot (USDT) — выберите товар и нажмите «Купить»</span>
     </div>
 
-    <!-- ═══ Основной контент ═══ -->
-    <div class="layout-content">
-        <main class="products-section">
-
-            <div class="payment-alert" id="status-alert">
-                💎 <strong>Автоматическая оплата:</strong> Выберите нужный товар и нажмите «Купить» для мгновенной оплаты через CryptoBot (USDT).
-            </div>
-
-            <div class="no-results" id="no-results">
-                🔍 По вашему запросу ничего не найдено
-            </div>
-
-            <!-- ── TELEGRAM ADS ── -->
-            <div class="category-block" id="cat-tgads">
-                <h3>Telegram Ads Рекламные Кабинеты</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>Telegram Ads РК | Стартовый Траст | Активирован через Реселлера</h4>
-                            <p>Готовый к заливу рекламный кабинет Telegram Ads. Идеальное решение для быстрого старта каналов, ботов или внешних ссылок.</p>
-                            <div class="details-box">
-                                <strong>Преимущества:</strong> Повышенный внутренний траст, быстрая модерация, формат Tdata/Session.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>9 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">500 $</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'Telegram Ads РК | Стартовый', 500, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>Telegram Ads РК VIP | Агентский Безлимит</h4>
-                            <p>Премиальный трастовый аккаунт с агентским кабинетом Telegram Ads для крупных медиабайеров.</p>
-                            <div class="details-box">
-                                <strong>Преимущества:</strong> Минимальная комиссия рынка, приоритетная ручная модерация, отсутствие лимитов.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>4 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">1200 $</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'Telegram Ads РК VIP', 1200, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ── FARM FB ── -->
-            <div class="category-block" id="cat-farm">
-                <h3>Farm Аккаунты Facebook</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>FARM | Аккаунт UA | 14 дней прогрева + Создана ФП + 2FA</h4>
-                            <p>Высококачественный ручной фарм на украинских мобильных прокси. Идеально под первобилы.</p>
-                            <div class="details-box">
-                                <strong>Характеристики:</strong> Cookie (JSON), Токен EAAB, созданная заполненная Fan Page.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>142 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">2750 ₽</div>
-                            <div class="price-hint">≈ 30 USDT</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'FARM | Аккаунт UA', 30, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ── КИНГИ FB ── -->
-            <div class="category-block" id="cat-king">
-                <h3>Кинг аккаунты Facebook</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>KING + ПЗРД | 30 дней фарма + БМ 250$ + Токен + 2FA</h4>
-                            <p>Мощнейший Кинг-аккаунт. Пройдено ЗРД (селфи подтверждено), привязан Бизнес Менеджер.</p>
-                            <div class="details-box">
-                                <strong>Характеристики:</strong> Плашка ЗРД горит зеленым, внутри БМ с лимитом 250$.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>39 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">13200 ₽</div>
-                            <div class="price-hint">≈ 144 USDT</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'KING + ПЗРД', 144, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ── БМ FB ── -->
-            <div class="category-block" id="cat-bm">
-                <h3>Бизнес Менеджеры Facebook</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>Бизнес Менеджер (BM) 50$ лимит | Безлимитное создание РК</h4>
-                            <p>Создан на старых трастовых аккаунтах. Ссылка-инвайт полностью рабочая.</p>
-                            <div class="details-box">
-                                <strong>Характеристики:</strong> Лимит 50$/сутки на старте с возможностью быстрого разгона.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>88 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">4950 ₽</div>
-                            <div class="price-hint">≈ 54 USDT</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'Бизнес Менеджер (BM) 50$', 54, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ── АВТОРЕГИ FB ── -->
-            <div class="category-block" id="cat-autoreg">
-                <h3>Автореги / Самореги</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>Авторег FB | MIX IP | Эл. почта в комплекте | Пол MIX</h4>
-                            <p>Чистейшие автореги для работы со специализированным софтом (Dolphin, AdsPower).</p>
-                            <div class="details-box">
-                                <strong>Характеристики:</strong> Регистрация на приватные IP, почта в комплекте.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>2450 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">440 ₽</div>
-                            <div class="price-hint">≈ 5 USDT</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'Авторег FB | MIX IP', 5, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- ── GOOGLE ADS ── -->
-            <div class="category-block" id="cat-google">
-                <h3>Google Ads Аккаунты</h3>
-                <div class="product-list">
-
-                    <div class="product-row">
-                        <div class="p-info">
-                            <h4>Google Ads | Саморег с отлежкой | ГЕО Украина (UA) | cookies</h4>
-                            <p>Прогретые аккаунты Google со стажем регистрации от 30 дней. Полностью готовы к запуску поисковой рекламы.</p>
-                            <div class="details-box">
-                                <strong>Характеристики:</strong> Отлежка от 30 дней, выдаются куки (JSON) + логин/пароль.
-                            </div>
-                        </div>
-                        <div class="p-stock">В наличии: <span>45 шт.</span></div>
-                        <div class="p-action">
-                            <div class="product-price">1350 ₽</div>
-                            <div class="price-hint">≈ 15 USDT</div>
-                            <div class="btn-group">
-                                <button class="btn-desc" onclick="toggleDetails(this)">Описание</button>
-                                <button class="btn-buy" onclick="startPurchase(this, 'Google Ads | Саморег UA', 15, 'USD')">Купить</button>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
-
-        </main>
+    <!-- Пустой поиск -->
+    <div class="empty" id="no-results" role="alert">
+      <div class="empty-icon">🔍</div>
+      <p>По вашему запросу ничего не найдено</p>
     </div>
+
+    <!-- ── TELEGRAM ADS ── -->
+    <div class="cat-block" id="cat-tgads">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">📡</span> Telegram Ads Кабинеты
+        <span class="cat-count">2 позиции</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">Telegram Ads РК | Стартовый Траст | Реселлер</div>
+            <div class="p-desc">Готовый к заливу кабинет. Идеален для быстрого старта каналов, ботов и внешних ссылок.</div>
+            <div class="details-box">
+              <strong>Преимущества:</strong> Повышенный внутренний траст, быстрая модерация, формат Tdata/Session.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">9 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-main">500 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'Telegram Ads РК | Стартовый', 500, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">Telegram Ads РК VIP | Агентский Безлимит</div>
+            <div class="p-desc">Премиальный трастовый аккаунт с агентским кабинетом для крупных медиабайеров.</div>
+            <div class="details-box">
+              <strong>Преимущества:</strong> Минимальная комиссия рынка, приоритетная ручная модерация, отсутствие лимитов.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">4 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-main">1200 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'Telegram Ads РК VIP', 1200, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── FARM FB ── -->
+    <div class="cat-block" id="cat-farm">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">🌱</span> Farm Аккаунты Facebook
+        <span class="cat-count">1 позиция</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">FARM | Аккаунт UA | 14 дней прогрева + ФП + 2FA</div>
+            <div class="p-desc">Высококачественный ручной фарм на украинских мобильных прокси. Идеально под первобилы.</div>
+            <div class="details-box">
+              <strong>Характеристики:</strong> Cookie (JSON), Токен EAAB, созданная заполненная Fan Page.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">142 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-rub">2 750 ₽</div>
+            <div class="price-main">≈ 30 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'FARM | Аккаунт UA', 30, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── KING FB ── -->
+    <div class="cat-block" id="cat-king">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">👑</span> Кинг аккаунты Facebook
+        <span class="cat-count">1 позиция</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">KING + ПЗРД | 30 дней фарма + БМ 250$ + Токен + 2FA</div>
+            <div class="p-desc">Мощный Кинг-аккаунт. Пройдено ЗРД (селфи подтверждено), привязан Бизнес Менеджер.</div>
+            <div class="details-box">
+              <strong>Характеристики:</strong> Плашка ЗРД горит зелёным, внутри БМ с лимитом 250$.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">39 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-rub">13 200 ₽</div>
+            <div class="price-main">≈ 144 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'KING + ПЗРД', 144, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── БИЗНЕС МЕНЕДЖЕРЫ ── -->
+    <div class="cat-block" id="cat-bm">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">🏢</span> Бизнес Менеджеры Facebook
+        <span class="cat-count">1 позиция</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">Бизнес Менеджер (BM) 50$ лимит | Безлимитное создание РК</div>
+            <div class="p-desc">Создан на старых трастовых аккаунтах. Ссылка-инвайт полностью рабочая.</div>
+            <div class="details-box">
+              <strong>Характеристики:</strong> Лимит 50$/сутки на старте с возможностью быстрого разгона.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">88 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-rub">4 950 ₽</div>
+            <div class="price-main">≈ 54 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'Бизнес Менеджер (BM) 50$', 54, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── АВТОРЕГИ ── -->
+    <div class="cat-block" id="cat-autoreg">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">⚡</span> Автореги / Самореги
+        <span class="cat-count">1 позиция</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">Авторег FB | MIX IP | Эл. почта в комплекте | Пол MIX</div>
+            <div class="p-desc">Чистые автореги для Dolphin, AdsPower и другого специализированного ПО.</div>
+            <div class="details-box">
+              <strong>Характеристики:</strong> Регистрация на приватные IP, почта в комплекте.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">2450 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-rub">440 ₽</div>
+            <div class="price-main">≈ 5 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'Авторег FB | MIX IP', 5, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ── GOOGLE ADS ── -->
+    <div class="cat-block" id="cat-google">
+      <h2 class="cat-title">
+        <span class="cat-title-icon">🔍</span> Google Ads Аккаунты
+        <span class="cat-count">1 позиция</span>
+      </h2>
+      <div class="product-list">
+
+        <div class="product-card">
+          <div class="p-info">
+            <div class="p-name">Google Ads | Саморег с отлежкой | ГЕО Украина (UA) | cookies</div>
+            <div class="p-desc">Прогретые аккаунты со стажем от 30 дней. Полностью готовы к запуску поисковой рекламы.</div>
+            <div class="details-box">
+              <strong>Характеристики:</strong> Отлежка от 30 дней, выдаются куки (JSON) + логин/пароль.
+            </div>
+          </div>
+          <div class="p-stock-col">
+            <div class="stock-label">В наличии</div>
+            <div class="stock-count">45 шт.</div>
+          </div>
+          <div class="p-action-col">
+            <div class="price-rub">1 350 ₽</div>
+            <div class="price-main">≈ 15 USDT</div>
+            <div class="btn-row">
+              <button class="btn btn-info" onclick="toggleDetails(this)">Подробнее</button>
+              <button class="btn btn-pay" onclick="startPurchase(this, 'Google Ads | Саморег UA', 15, 'USD')">Купить</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
 </div>
 
+<!-- ═══ ФУТЕР ═══ -->
 <footer>
-    <p>&copy; 2026 Amigos Shop. Все права защищены.</p>
-    <p style="margin-top:10px;">По всем вопросам: <a href="https://t.me/amigospeso" target="_blank" rel="noopener">@amigospeso</a></p>
+  <div class="footer-inner">
+    <p>&copy; 2026 Amigos Shop — все права защищены</p>
+    <p style="margin-top:8px;">Вопросы и замены: <a href="https://t.me/amigospeso" target="_blank" rel="noopener">@amigospeso</a></p>
+  </div>
 </footer>
 
 <script>
-    /* ─── Переключение описания ─── */
-    function toggleDetails(button) {
-        const box = button.closest('.product-row').querySelector('.details-box');
-        const open = box.style.display === 'block';
-        box.style.display = open ? 'none' : 'block';
-        button.textContent = open ? 'Описание' : 'Скрыть';
-        button.style.backgroundColor = open ? '#1f2937' : '#4b5563';
-    }
+/* ── Описание товара ── */
+function toggleDetails(btn) {
+  const card = btn.closest('.product-card');
+  const box  = card.querySelector('.details-box');
+  const open = box.style.display === 'block';
+  box.style.display = open ? 'none' : 'block';
+  btn.textContent = open ? 'Подробнее' : 'Скрыть';
+}
 
-    /* ─── Поиск: скрывает строки и целые категории если пусто ─── */
-    document.getElementById('search-input').addEventListener('input', function () {
-        const query = this.value.toLowerCase().trim();
-        const blocks = document.querySelectorAll('.category-block');
-        let totalVisible = 0;
+/* ── Поиск ── */
+document.getElementById('search-input').addEventListener('input', function () {
+  const q = this.value.toLowerCase().trim();
+  let total = 0;
 
-        blocks.forEach(block => {
-            const rows = block.querySelectorAll('.product-row');
-            let visibleInBlock = 0;
+  document.querySelectorAll('.cat-block').forEach(block => {
+    let vis = 0;
+    block.querySelectorAll('.product-card').forEach(card => {
+      const match = !q || card.querySelector('.p-name').textContent.toLowerCase().includes(q);
+      card.classList.toggle('hidden', !match);
+      if (match) vis++;
+    });
+    block.classList.toggle('hidden', vis === 0);
+    total += vis;
+  });
 
-            rows.forEach(row => {
-                const title = row.querySelector('h4').textContent.toLowerCase();
-                const match = !query || title.includes(query);
-                row.classList.toggle('hidden', !match);
-                if (match) visibleInBlock++;
-            });
+  const noRes = document.getElementById('no-results');
+  noRes.classList.toggle('visible', total === 0 && q.length > 0);
+});
 
-            // Скрываем всю категорию если в ней нет видимых товаров
-            block.classList.toggle('hidden', visibleInBlock === 0);
-            totalVisible += visibleInBlock;
-        });
+/* ── CryptoBot: создание инвойса ── */
+async function startPurchase(btn, name, price, currency) {
+  const orig = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = '⏱…';
 
-        document.getElementById('no-results').classList.toggle('visible', totalVisible === 0 && query.length > 0);
+  const bar = document.getElementById('status-alert');
+  setBar(bar, `⏳ Создаём счёт на ${price} USDT…`, 'var(--cyan)', 'rgba(0,212,255,0.08)', 'rgba(0,212,255,0.2)');
+
+  try {
+    const res = await fetch('/api/create-invoice', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ productName: name, price, currency })
     });
 
-    /* ─── Создание инвойса в CryptoBot ─── */
-    async function startPurchase(button, name, price, currency) {
-        const originalText = button.textContent;
-        button.disabled = true;
-        button.textContent = '⏱ Счёт...';
-
-        const alertBox = document.getElementById('status-alert');
-        setAlert(alertBox, `⏳ Создаём счёт на ${price} USDT через CryptoBot...`, '#fbbf24', 'rgba(251,191,36,0.08)', 'rgba(251,191,36,0.25)');
-
-        try {
-            const response = await fetch('/api/create-invoice', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ productName: name, price: price, currency: currency })
-            });
-
-            // Если сервер вернул не-JSON (например html ошибки сервера)
-            const contentType = response.headers.get('content-type') || '';
-            if (!contentType.includes('application/json')) {
-                throw new Error(`Сервер вернул неожиданный ответ (HTTP ${response.status})`);
-            }
-
-            const data = await response.json();
-
-            if (data.success && data.payUrl) {
-                setAlert(alertBox, '🚀 Счёт создан! Перенаправляем в Telegram...', '#10b981', 'rgba(16,185,129,0.08)', 'rgba(16,185,129,0.25)');
-                setTimeout(() => { window.location.href = data.payUrl; }, 400);
-            } else {
-                showError(alertBox, button, originalText, data.error || 'Неизвестная ошибка');
-            }
-        } catch (err) {
-            showError(alertBox, button, originalText, 'Не удалось связаться с сервером: ' + err.message);
-        }
+    const ct = res.headers.get('content-type') || '';
+    if (!ct.includes('application/json')) {
+      throw new Error(`Неожиданный ответ сервера (HTTP ${res.status})`);
     }
 
-    function setAlert(box, text, color, bg, border) {
-        box.innerHTML = text;
-        box.style.color = color;
-        box.style.backgroundColor = bg;
-        box.style.borderColor = border;
-    }
+    const data = await res.json();
 
-    function showError(alertBox, button, originalText, errorMsg) {
-        console.error('Ошибка оплаты:', errorMsg);
-        setAlert(alertBox, '❌ ' + errorMsg, '#f87171', 'rgba(248,113,113,0.08)', 'rgba(248,113,113,0.25)');
-        button.disabled = false;
-        button.textContent = originalText;
-
-        // Через 6 секунд сбрасываем плашку в исходное состояние
-        setTimeout(() => {
-            setAlert(
-                alertBox,
-                '💎 <strong>Автоматическая оплата:</strong> Выберите нужный товар и нажмите «Купить» для мгновенной оплаты через CryptoBot (USDT).',
-                '#3b82f6', 'rgba(59,130,246,0.1)', 'rgba(59,130,246,0.3)'
-            );
-        }, 6000);
+    if (data.success && data.payUrl) {
+      setBar(bar, '🚀 Счёт создан! Перенаправляем в Telegram…', 'var(--green)', 'rgba(0,229,160,0.08)', 'rgba(0,229,160,0.2)');
+      setTimeout(() => { window.location.href = data.payUrl; }, 400);
+    } else {
+      showErr(bar, btn, orig, data.error || 'Неизвестная ошибка CryptoBot');
     }
+  } catch (e) {
+    showErr(bar, btn, orig, 'Нет связи с сервером: ' + e.message);
+  }
+}
+
+function setBar(el, html, color, bg, border) {
+  el.innerHTML = html;
+  el.style.color = color;
+  el.style.background = bg;
+  el.style.borderColor = border;
+}
+
+function showErr(bar, btn, orig, msg) {
+  console.error('[CryptoBot]', msg);
+  setBar(bar, '❌ ' + msg, 'var(--red)', 'rgba(255,94,108,0.08)', 'rgba(255,94,108,0.25)');
+  btn.disabled = false;
+  btn.textContent = orig;
+  setTimeout(() => {
+    setBar(bar,
+      '<span class="dot"></span> Автоматическая оплата через CryptoBot (USDT) — выберите товар и нажмите «Купить»',
+      'var(--cyan)', 'var(--cyan-glow)', 'var(--border-hi)');
+  }, 6000);
+}
 </script>
-</body>
-</html>
