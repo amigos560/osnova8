@@ -378,10 +378,10 @@ ${buildOrderLines(cleanItems)}
 
             return res.status(200).json({ success: true, payUrl: data.result.pay_url });
         }
-
         console.error('CryptoBot createInvoice ошибка:', response.status, JSON.stringify(data).slice(0, 400));
-        return res.status(400).json({ success: false, error: 'Ошибка создания счёта. Напишите @amigospeso — оплатим вручную.' });
-
+                const errName = (data && data.error && (data.error.name || data.error.code)) || 'UNKNOWN';
+        console.error('CryptoBot createInvoice ошибка:', response.status, JSON.stringify(data).slice(0, 400));
+        return res.status(400).json({ success: false, error: `Ошибка создания счёта [${response.status} ${errName}]. Напишите @amigospeso — оплатим вручную.` });
     } catch (error) {
         console.error('=== ОШИБКА /api/create-invoice ===', error.message);
         if (error.code === 'ECONNABORTED') {
