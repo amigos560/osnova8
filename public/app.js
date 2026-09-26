@@ -395,3 +395,9 @@ document.getElementById('search-input').addEventListener('input', function () {
 });
 
 updateBadge();
+
+// Дата обновления стока в статус-баре — всегда сегодня
+const stockDateEl = document.getElementById('stock-date');
+if (stockDateEl) {
+    stockDateEl.textContent = new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' });
+}
