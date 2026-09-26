@@ -47,6 +47,10 @@
       <input class="search-input" id="search-input" type="search" placeholder="Поиск по товарам..." autocomplete="off">
     </div>
     <div class="header-right">
+      <button class="btn-cart" id="btn-cart" type="button" aria-label="Корзина">
+        🛒
+        <span class="cart-badge" id="cart-badge">0</span>
+      </button>
       <a class="btn-tg" href="https://t.me/amigospeso" target="_blank" rel="noopener">
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm4.64 6.8l-1.68 7.91c-.12.58-.46.72-.93.45l-2.58-1.9-1.24 1.2c-.14.14-.26.26-.52.26l.19-2.63 4.8-4.34c.21-.19-.05-.29-.32-.1l-5.93 3.73-2.55-.8c-.55-.17-.56-.55.12-.82l9.96-3.84c.46-.17.86.11.71.88z"/></svg>
         <span>Поддержка</span>
@@ -119,7 +123,7 @@
             <div class="price-main">500 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -134,7 +138,7 @@
             <div class="price-main">1200 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -157,7 +161,7 @@
             <div class="price-main">30 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -180,7 +184,7 @@
             <div class="price-main">144 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -203,7 +207,7 @@
             <div class="price-main">54 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -226,7 +230,7 @@
             <div class="price-main">5 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -249,7 +253,7 @@
             <div class="price-main">15 USDT</div>
             <div class="btn-row">
               <button class="btn btn-info" type="button">Подробнее</button>
-              <button class="btn btn-pay" type="button">Купить</button>
+              <button class="btn btn-add" type="button">В корзину</button>
             </div>
           </div>
         </article>
@@ -294,7 +298,11 @@
     <h2 class="section-title">Частые вопросы</h2>
     <details class="faq-item">
       <summary>Как происходит покупка?</summary>
-      <p>Нажмите «Купить» на нужном товаре, укажите Telegram и email — откроется счёт на оплату в USDT через CryptoBot. После оплаты товар придёт на email и в Telegram в течение 5 минут.</p>
+      <p>Нажмите «В корзину» на нужных товарах, укажите количество, затем «Оформить заказ» и введите Telegram и email — откроется один счёт на всю сумму в USDT через CryptoBot. После оплаты товар придёт на email и в Telegram в течение 5 минут.</p>
+    </details>
+    <details class="faq-item">
+      <summary>Можно ли купить несколько аккаунтов сразу?</summary>
+      <p>Да! Добавляйте любые товары в корзину и меняйте количество кнопками + и −. Весь заказ оплачивается одним счётом — это быстрее и удобнее, чем оплачивать каждый аккаунт отдельно.</p>
     </details>
     <details class="faq-item">
       <summary>Что делать, если аккаунт не подошёл?</summary>
@@ -327,6 +335,31 @@
   </div>
 </footer>
 
+<!-- МОДАЛЬНОЕ ОКНО — КОРЗИНА -->
+<div class="modal-overlay" id="cart-overlay" role="dialog" aria-modal="true" aria-label="Корзина">
+  <div class="modal modal-cart">
+    <button class="modal-close" type="button" aria-label="Закрыть">✕</button>
+
+    <div class="modal-icon">🛒</div>
+    <div class="modal-title">Корзина</div>
+    <div class="modal-product">Проверьте состав заказа перед оплатой</div>
+
+    <div class="cart-items" id="cart-items"></div>
+
+    <div class="cart-empty" id="cart-empty">
+      Корзина пуста.<br>Добавьте товары из каталога 👇
+    </div>
+
+    <div class="cart-footer" id="cart-footer">
+      <div class="modal-total">
+        <span class="modal-total-label">Итого к оплате (USDT)</span>
+        <span class="modal-total-price" id="cart-total">0 USDT</span>
+      </div>
+      <button class="btn-submit" id="btn-checkout" type="button">Оформить заказ →</button>
+    </div>
+  </div>
+</div>
+
 <!-- МОДАЛЬНОЕ ОКНО — ФОРМА ЗАКАЗА -->
 <div class="modal-overlay" id="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal">
@@ -335,6 +368,8 @@
     <div class="modal-icon">🛒</div>
     <div class="modal-title" id="modal-title">Оформление заказа</div>
     <div class="modal-product" id="modal-product-name"></div>
+
+    <div class="order-summary" id="order-summary"></div>
 
     <div class="delivery-info">
       ⏱ <strong>Выдача в течение 5 минут</strong> после подтверждения оплаты.<br>
