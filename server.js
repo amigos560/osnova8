@@ -23,13 +23,7 @@ const PORT             = parseInt(process.env.PORT || '3000', 10);
 
 const CRYPTOBOT_BASE = IS_TESTNET ? 'https://testnet-pay.crypt.bot' : 'https://pay.crypt.bot';
 
-// Опциональный прокси для запросов к CryptoBot
-// (нужен, если CryptoBot блокирует IP-адреса вашего хостинга — ошибка 405).
-// Задайте в Railway Variables при необходимости:
-//   CRYPTO_PROXY_HOST=1.2.3.4
-//   CRYPTO_PROXY_PORT=8080
-//   CRYPTO_PROXY_USER=логин        (если прокси с авторизацией)
-//   CRYPTO_PROXY_PASS=пароль
+// Опциональный прокси для запросов к CryptoBot (если блокирует IP хостинга)
 const PROXY_CONFIG = process.env.CRYPTO_PROXY_HOST ? {
     host:     process.env.CRYPTO_PROXY_HOST,
     port:     parseInt(process.env.CRYPTO_PROXY_PORT || '8080', 10),
@@ -132,10 +126,7 @@ async function notifyOwner(text) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  ПРОКСИ-ОБЁРТКА ДЛЯ ЗАПРОСОВ К CRYPTOBOT
-//  - validateStatus: () => true — не бросаем исключение на
-//    любой HTTP-статус, чтобы сами могли его залогировать
-//  - если задан CRYPTO_PROXY_HOST — запрос пойдёт через прокси
+//  ОБЁРТКА ДЛЯ ЗАПРОСОВ К CRYPTOBOT
 // ═══════════════════════════════════════════════════════════
 async function cryptoBotApi(method, data = {}) {
     const response = await axios.post(`${CRYPTOBOT_BASE}/api/${method}`, data, {
@@ -148,69 +139,26 @@ async function cryptoBotApi(method, data = {}) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  РЕГИСТРАЦИЯ ВЕБХУКА С ДИАГНОСТИКОЙ
+//  ПРОВЕРКА ПОДКЛЮЧЕНИЯ (регистрация вебхука — только вручную в @CryptoBot)
 // ═══════════════════════════════════════════════════════════
 async function registerWebhook() {
     const webhookUrl = `${MY_DOMAIN}/api/payment-webhook`;
-    console.log(`🔧 Проверка связи с CryptoBot (${CRYPTOBOT_BASE})...`);
-    if (PROXY_CONFIG) console.log(`🌐 Используется прокси: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
+    console.log('───────────────────────────────────────────────');
+    console.log('📌 ВЕБХУК: пропишите вручную в @CryptoBot → Crypto Pay → My Apps');
+    console.log('   Webhook URL:', webhookUrl);
+    if (PROXY_CONFIG) console.log(`🌐 Прокси: ${PROXY_CONFIG.host}:${PROXY_CONFIG.port}`);
+    console.log('───────────────────────────────────────────────');
 
-    // 1) Самый простой метод — проверка токена
-    let me;
     try {
-        me = await cryptoBotApi('getMe');
-    } catch (e) {
-        console.error('❌ Сетевая ошибка при обращении к CryptoBot:', e.message);
-        if (PROXY_CONFIG) console.error('   Проверьте настройки прокси (CRYPTO_PROXY_*)');
-        return;
-    }
-
-    if (me.status !== 200) {
-        console.error(`❌ CryptoBot API вернул HTTP ${me.status}`);
-        console.error('   Тело ответа:', JSON.stringify(me.data).slice(0, 400));
-        console.error('   cf-ray:', me.headers?.['cf-ray'] || 'нет');
-        if (me.status === 401 || me.status === 403) {
-            console.error('   → Токен неверный или отозван. Перевыпустите: @CryptoBot → Crypto Pay → My Apps');
-        }
-        if (me.status === 405) {
-            console.error('   → Запросы БЛОКИРУЮТСЯ на уровне IP/CDN (типично для Railway/AWS).');
-            console.error('   → Решение: добавьте в Railway Variables прокси:');
-            console.error('     CRYPTO_PROXY_HOST, CRYPTO_PROXY_PORT, CRYPTO_PROXY_USER, CRYPTO_PROXY_PASS');
-        }
-        return;
-    }
-    console.log(`✅ Токен действителен, приложение: ${me.data?.result?.name || 'ok'}`);
-
-    // 2) Текущий вебхук
-    let currentUrl = '';
-    try {
-        const info = await cryptoBotApi('getWebhookInfo');
-        if (info.status === 200 && info.data?.ok) {
-            currentUrl = info.data.result.url || '';
+        const me = await cryptoBotApi('getMe');
+        if (me.status === 200 && me.data?.ok) {
+            console.log(`✅ Токен действителен, приложение: ${me.data.result?.name || 'ok'}`);
         } else {
-            console.error(`⚠️ getWebhookInfo вернул HTTP ${info.status}:`, JSON.stringify(info.data).slice(0, 300));
+            console.error(`❌ CryptoBot API вернул HTTP ${me.status}:`, JSON.stringify(me.data).slice(0, 300));
+            console.error('   Проверьте CRYPTO_BOT_TOKEN и IS_TESTNET в Railway Variables');
         }
     } catch (e) {
-        console.error('⚠️ Не удалось проверить текущий вебхук:', e.message);
-    }
-
-    if (currentUrl === webhookUrl) {
-        console.log(`✅ Вебхук уже зарегистрирован: ${webhookUrl}`);
-        return;
-    }
-
-    // 3) Регистрация
-    try {
-        const res = await cryptoBotApi('setWebhook', { url: webhookUrl });
-        if (res.status === 200 && res.data?.ok) {
-            console.log(`✅ Вебхук зарегистрирован: ${webhookUrl}`);
-        } else {
-            console.error(`❌ setWebhook вернул HTTP ${res.status}:`, JSON.stringify(res.data).slice(0, 400));
-            console.error('   Проверьте: MY_DOMAIN должен быть https-адресом без слэша в конце,');
-            console.error('   а сайт по этому адресу должен открываться в браузере.');
-        }
-    } catch (e) {
-        console.error('❌ Ошибка setWebhook:', e.message);
+        console.error('❌ Сетевая ошибка при проверке токена CryptoBot:', e.message);
     }
 }
 
@@ -350,8 +298,11 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
             asset:         'USDT',
             payload:       buyerPayload,
             expires_in:    1800,
-            paid_btn_name: 'viewItem',
-            paid_btn_url:  `${MY_DOMAIN}/payment-success.html`
+            // Кнопка «Посмотреть товар» — только если MY_DOMAIN валидный (https://...)
+            ...(MY_DOMAIN.startsWith('https://') ? {
+                paid_btn_name: 'viewItem',
+                paid_btn_url:  `${MY_DOMAIN}/payment-success.html`
+            } : {})
         });
 
         const data = response.data || {};
@@ -378,10 +329,11 @@ ${buildOrderLines(cleanItems)}
 
             return res.status(200).json({ success: true, payUrl: data.result.pay_url });
         }
-        console.error('CryptoBot createInvoice ошибка:', response.status, JSON.stringify(data).slice(0, 400));
-                const errName = (data && data.error && (data.error.name || data.error.code)) || 'UNKNOWN';
+
+        const errName = (data && data.error && (data.error.name || data.error.code)) || 'UNKNOWN';
         console.error('CryptoBot createInvoice ошибка:', response.status, JSON.stringify(data).slice(0, 400));
         return res.status(400).json({ success: false, error: `Ошибка создания счёта [${response.status} ${errName}]. Напишите @amigospeso — оплатим вручную.` });
+
     } catch (error) {
         console.error('=== ОШИБКА /api/create-invoice ===', error.message);
         if (error.code === 'ECONNABORTED') {
