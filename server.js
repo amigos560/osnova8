@@ -48,18 +48,51 @@ if (missing.length) {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  КАТАЛОГ — цены ТОЛЬКО на сервере.
-//  ⚠️ Названия должны совпадать с data-name в public/index.html
+//  КАТАЛОГ — единый источник правды: файл products.json
+//  (лежит в КОРНЕ репозитория, рядом с server.js).
+//  Витрина на сайте рисуется АВТОМАТИЧЕСКИ из этого файла,
+//  цены для оплаты берутся из него же. Чтобы добавить/изменить
+//  товар — редактируете ТОЛЬКО products.json.
+//
+//  Поля товара:
+//    "name"     — название (видят покупатели; должно быть уникальным!)
+//    "price"    — цена в USDT (число)
+//    "rub"      — подпись «≈ N ₽» или null
+//    "stock"    — сколько шт. «в наличии» (0 = товар скрыт с витрины)
+//    "badge"    — «ХИТ» или null
+//    "desc"     — описание под названием
+//    "details"  — раскрывающийся блок «Подробнее» (HTML: <br>, <strong>)
+//    "warranty" — не обязательно; если нет, берётся общая из "warranty"
 // ═══════════════════════════════════════════════════════════
-const CATALOG = {
-    'Telegram Ads РК | Стартовый Траст':        { price: 350  },
-    'Telegram Ads РК VIP | Агентский Безлимит': { price: 900 },
-    'FARM | Аккаунт UA | 14 дней прогрева':     { price: 15   },
-    'KING + ПЗРД | БМ 250$ + 2FA':              { price: 75  },
-    'Бизнес Менеджер (BM) 50$ лимит':           { price: 30   },
-    'Авторег FB | MIX IP | Email в комплекте':  { price: 5    },
-    'Google Ads | Саморег UA | cookies':        { price: 22   },
-};
+const PRODUCTS_FILE = path.join(__dirname, 'products.json');
+
+function loadProducts() {
+    try {
+        const data = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
+        if (!data || !Array.isArray(data.categories)) throw new Error('нет поля categories');
+        return data;
+    } catch (e) {
+        console.error('❌ Не удалось прочитать products.json:', e.message);
+        return { warranty: '', categories: [] };
+    }
+}
+
+// Список всех товаров плоским списком
+function allProducts() {
+    const data = loadProducts();
+    const list = [];
+    for (const cat of data.categories) {
+        for (const prod of (cat.products || [])) {
+            list.push(prod);
+        }
+    }
+    return list;
+}
+
+// Поиск товара по названию (для проверки цены при оплате)
+function findProduct(name) {
+    return allProducts().find(p => p.name === name) || null;
+}
 
 const MAX_QTY_PER_ITEM   = 100;
 const MAX_DISTINCT_ITEMS = 50;
@@ -232,9 +265,9 @@ const apiLimiter = rateLimit({
     standardHeaders: true, legacyHeaders: false
 });
 
-// ── Публичный каталог ──
+// ── Публичный каталог (витрина строится из этого ответа) ──
 app.get('/api/catalog', apiLimiter, (req, res) => {
-    res.json({ products: Object.entries(CATALOG).map(([name, p]) => ({ name, price: p.price })) });
+    res.json(loadProducts());
 });
 
 // ── Создание инвойса (заказ из корзины) ──
@@ -259,7 +292,7 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
         const cleanItems = [];
         for (const raw of rawItems) {
             const name = String(raw?.name || '').slice(0, 200);
-            const product = CATALOG[name];
+            const product = findProduct(name);
             if (!product) {
                 return res.status(400).json({ success: false, error: 'Товар не найден: ' + name });
             }
@@ -268,8 +301,12 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
             if (qty > MAX_QTY_PER_ITEM) {
                 return res.status(400).json({ success: false, error: `Максимум ${MAX_QTY_PER_ITEM} шт. одного товара` });
             }
-            total += product.price * qty;
-            cleanItems.push({ name, qty, price: product.price });
+            const price = parseFloat(product.price);
+            if (!Number.isFinite(price) || price <= 0) {
+                return res.status(400).json({ success: false, error: 'Некорректная цена товара: ' + name });
+            }
+            total += price * qty;
+            cleanItems.push({ name, qty, price });
         }
 
         if (!(total > 0) || total > MAX_ORDER_TOTAL) {
@@ -444,6 +481,8 @@ app.listen(PORT, async () => {
     console.log(`✅ Магазин запущен на порту ${PORT}`);
     console.log(`🌍 MY_DOMAIN = "${MY_DOMAIN}"`);
     console.log(`🔎 Коды символов домена: ${[...MY_DOMAIN].map(c => c.charCodeAt(0)).join(' ')}`);
+    const prods = allProducts();
+    console.log(`🛒 Товаров в products.json: ${prods.length}`);
     loadOrderLog();
     await registerWebhook();
 });
