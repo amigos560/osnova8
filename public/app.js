@@ -2,8 +2,8 @@
 
 // ══════════════════════════════════════════
 //  Amigos Shop — клиентская логика + корзина
-//  Корзина хранится в localStorage и переживает
-//  перезагрузку страницы. Сумму считает СЕРВЕР.
+//  Версия 2.1: ошибки показываются ВНУТРИ модалки,
+//  таймаут запроса 25 сек, кнопка всегда восстанавливается
 // ══════════════════════════════════════════
 
 const CART_KEY = 'amigos_cart_v1';
@@ -32,6 +32,27 @@ const DEFAULT_BAR = {
     color: 'var(--cyan)', bg: 'var(--cyan-glow)', border: 'var(--border-hi)'
 };
 
+// ══════════════ ОШИБКИ ВНУТРИ МОДАЛКИ ══════════════
+
+function showModalError(msg) {
+    let box = document.getElementById('modal-error');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'modal-error';
+        box.style.cssText = 'margin-top:12px;padding:10px 14px;border-radius:8px;' +
+            'background:rgba(255,94,108,.08);border:1px solid rgba(255,94,108,.25);' +
+            'color:#ff5e6c;font-size:.82rem;line-height:1.5;word-break:break-word;';
+        const btn = document.getElementById('btn-submit');
+        btn.parentNode.insertBefore(box, btn.nextSibling);
+    }
+    box.textContent = msg;
+}
+
+function clearModalError() {
+    const box = document.getElementById('modal-error');
+    if (box) box.remove();
+}
+
 // ══════════════ КОРЗИНА ══════════════
 
 function cartCount() { return cart.reduce((s, i) => s + i.qty, 0); }
@@ -51,7 +72,7 @@ function updateBadge() {
 function bumpBadge() {
     updateBadge();
     cartBadge.classList.remove('bump');
-    void cartBadge.offsetWidth; // перезапуск анимации
+    void cartBadge.offsetWidth;
     cartBadge.classList.add('bump');
 }
 
@@ -87,7 +108,6 @@ function removeFromCart(name) {
 }
 
 function renderCart() {
-    // Строки позиций
     cartItemsEl.innerHTML = '';
     for (const item of cart) {
         const row = document.createElement('div');
@@ -156,7 +176,6 @@ function openOrder() {
         total: cartTotal()
     };
 
-    // Сводка заказа в модалке
     const summary = document.getElementById('order-summary');
     summary.innerHTML = '';
     for (const item of cart) {
@@ -185,6 +204,7 @@ function openOrder() {
     document.getElementById('input-tg').value = '';
     document.getElementById('input-email').value = '';
     clearErrors();
+    clearModalError();
 
     closeCart();
     overlay.classList.add('open');
@@ -204,10 +224,9 @@ function clearErrors() {
         document.getElementById(id).classList.remove('visible'));
 }
 
-// ══════════════ ОБРАБОТКА КЛИКОВ (делегирование) ══════════════
+// ══════════════ ОБРАБОТКА КЛИКОВ ══════════════
 
 document.addEventListener('click', (e) => {
-    // Кнопка «В корзину» на карточке товара
     const addBtn = e.target.closest('.btn-add');
     if (addBtn) {
         const card = addBtn.closest('.product-card');
@@ -217,13 +236,11 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // Кнопка корзины в шапке
     if (e.target.closest('.btn-cart')) {
         openCart();
         return;
     }
 
-    // Кнопки + / − / удалить внутри корзины
     const qtyBtn = e.target.closest('[data-action]');
     if (qtyBtn && qtyBtn.closest('.cart-item')) {
         const name = qtyBtn.closest('.cart-item').dataset.name;
@@ -234,27 +251,23 @@ document.addEventListener('click', (e) => {
         return;
     }
 
-    // «Подробнее»
     const infoBtn = e.target.closest('.btn-info');
     if (infoBtn) {
         toggleDetails(infoBtn);
         return;
     }
 
-    // «Оформить заказ»
     if (e.target.closest('#btn-checkout')) {
         openOrder();
         return;
     }
 
-    // Закрытие крестиком
     if (e.target.closest('.modal-close')) {
         if (e.target.closest('#cart-overlay')) closeCart();
         else closeModal();
         return;
     }
 
-    // Клик по фону оверлея
     if (e.target === overlay)      closeModal();
     if (e.target === cartOverlay)  closeCart();
 });
@@ -269,14 +282,15 @@ const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const TG_USER_RE  = /^@?[A-Za-z0-9_]{3,64}$/;
 const TG_PHONE_RE = /^\+?\d[\d\s\-()]{8,16}$/;
 
-// ══════════════ ОТПРАВКА ЗАКАЗА ══════════════
+// ══════════════ ОТПРАВКА ЗАКАЗА (с таймаутом и видимыми ошибками) ══════════════
 
 document.getElementById('order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     clearErrors();
+    clearModalError();
 
     if (currentOrder.items.length === 0) {
-        setBar('❌ Корзина пуста', 'var(--red)', 'rgba(255,94,108,0.08)', 'rgba(255,94,108,0.25)');
+        showModalError('❌ Корзина пуста');
         return;
     }
 
@@ -303,41 +317,48 @@ document.getElementById('order-form').addEventListener('submit', async (e) => {
     setBar(`⏳ Создаём счёт на ${currentOrder.total.toFixed(2)} USDT…`,
            'var(--cyan)', 'rgba(0,212,255,0.08)', 'rgba(0,212,255,0.2)');
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
+
     try {
         const res = await fetch('/api/create-invoice', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                items:         currentOrder.items, // сервер сам посчитает сумму
+                items:         currentOrder.items,
                 buyerTelegram: tgRaw,
                 buyerEmail:    email
-            })
+            }),
+            signal: controller.signal
         });
 
-        const ct = res.headers.get('content-type') || '';
-        if (!ct.includes('application/json')) {
-            throw new Error(`Неожиданный ответ сервера (HTTP ${res.status})`);
-        }
-
-        const data = await res.json();
+        const data = await res.json().catch(() => null);
+        if (!data) throw new Error(`Сервер вернул неожиданный ответ (HTTP ${res.status})`);
 
         if (res.ok && data.success && data.payUrl) {
             cart = [];
             saveCart();
+            clearModalError();
             closeModal();
             setBar('🚀 Счёт создан! Перенаправляем в Telegram...',
                    'var(--green)', 'rgba(0,229,160,0.08)', 'rgba(0,229,160,0.2)');
-            setTimeout(() => { window.location.href = data.payUrl; }, 400);
-        } else {
-            throw new Error(data.error || 'Не удалось создать счёт');
+            window.location.href = data.payUrl;
+            return;
         }
 
+        throw new Error(data.error || `Ошибка сервера (HTTP ${res.status})`);
+
     } catch (err) {
-        console.error('[CryptoBot]', err.message);
-        setBar('❌ ' + err.message, 'var(--red)', 'rgba(255,94,108,0.08)', 'rgba(255,94,108,0.25)');
+        const msg = (err.name === 'AbortError')
+            ? 'Сервер не ответил за 25 секунд. Проверьте связь и попробуйте ещё раз.'
+            : err.message;
+        console.error('[create-invoice]', msg);
+        showModalError('❌ ' + msg);
+        setBar('❌ ' + msg, 'var(--red)', 'rgba(255,94,108,0.08)', 'rgba(255,94,108,0.25)');
+    } finally {
+        clearTimeout(timeoutId);
         btn.disabled = false;
         btn.textContent = 'Перейти к оплате в CryptoBot →';
-        setTimeout(() => setBar(DEFAULT_BAR.html, DEFAULT_BAR.color, DEFAULT_BAR.bg, DEFAULT_BAR.border), 6000);
     }
 });
 
@@ -373,5 +394,4 @@ document.getElementById('search-input').addEventListener('input', function () {
     document.getElementById('no-results').classList.toggle('visible', total === 0 && q.length > 0);
 });
 
-// При загрузке страницы — восстановить счётчик корзины
 updateBadge();
