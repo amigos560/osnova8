@@ -17,7 +17,9 @@ const rateLimit   = require('express-rate-limit');
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
 const TG_BOT_TOKEN     = process.env.TG_BOT_TOKEN;
 const TG_OWNER_ID      = process.env.TG_OWNER_ID;
-const MY_DOMAIN        = (process.env.MY_DOMAIN || '').replace(/\/+$/, '');
+// Убираем ВЕСЬ whitespace (в т.ч. невидимые символы при копировании на телефоне)
+// и слэши в конце — иначе CryptoBot вернёт 400 PAID_BTN_URL_INVALID
+const MY_DOMAIN        = (process.env.MY_DOMAIN || '').replace(/\s+/g, '').replace(/\/+$/, '');
 const IS_TESTNET       = String(process.env.IS_TESTNET).toLowerCase() === 'true';
 const PORT             = parseInt(process.env.PORT || '3000', 10);
 
@@ -206,7 +208,14 @@ app.use(express.json({
     verify: (req, res, buf) => { req.rawBody = buf; }
 }));
 
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: 'index.html' }));
+app.use(express.static(path.join(__dirname, 'public'), {
+    maxAge: '1h',
+    setHeaders: (res, filePath) => {
+        // HTML не кэшируем — иначе посетители до часа видят старые цены/товары
+        if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-cache');
+    },
+    index: 'index.html'
+}));
 
 const createInvoiceLimiter = rateLimit({
     windowMs: 60 * 1000, max: 10,
@@ -297,12 +306,9 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
             currency_type: 'crypto',
             asset:         'USDT',
             payload:       buyerPayload,
-            expires_in:    1800,
-            // Кнопка «Посмотреть товар» — только если MY_DOMAIN валидный (https://...)
-            ...(MY_DOMAIN.startsWith('https://') ? {
-                paid_btn_name: 'viewItem',
-                paid_btn_url:  `${MY_DOMAIN}/payment-success.html`
-            } : {})
+            expires_in:    1800
+            // paid_btn НЕ используем: любая ошибка в URL блокирует весь счёт.
+            // После оплаты в инвойсе будет стандартная кнопка открытия CryptoBot.
         });
 
         const data = response.data || {};
@@ -436,7 +442,8 @@ process.on('unhandledRejection', (reason) => {
 // ── Запуск ──
 app.listen(PORT, async () => {
     console.log(`✅ Магазин запущен на порту ${PORT}`);
-    console.log(`🌍 MY_DOMAIN = ${MY_DOMAIN}`);
+    console.log(`🌍 MY_DOMAIN = "${MY_DOMAIN}"`);
+    console.log(`🔎 Коды символов домена: ${[...MY_DOMAIN].map(c => c.charCodeAt(0)).join(' ')}`);
     loadOrderLog();
     await registerWebhook();
 });
