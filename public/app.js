@@ -2,8 +2,7 @@
 
 // ══════════════════════════════════════════
 //  Amigos Shop — клиентская логика + корзина
-//  Версия 2.1: ошибки показываются ВНУТРИ модалки,
-//  таймаут запроса 25 сек, кнопка всегда восстанавливается
+//  Витрина рисуется из /api/catalog (products.json)
 // ══════════════════════════════════════════
 
 const CART_KEY = 'amigos_cart_v1';
@@ -282,7 +281,7 @@ const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const TG_USER_RE  = /^@?[A-Za-z0-9_]{3,64}$/;
 const TG_PHONE_RE = /^\+?\d[\d\s\-()]{8,16}$/;
 
-// ══════════════ ОТПРАВКА ЗАКАЗА (с таймаутом и видимыми ошибками) ══════════════
+// ══════════════ ОТПРАВКА ЗАКАЗА ══════════════
 
 document.getElementById('order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -395,6 +394,85 @@ document.getElementById('search-input').addEventListener('input', function () {
 });
 
 updateBadge();
+
+// ══════════════ КАТАЛОГ ИЗ products.json ══════════════
+// Витрина рисуется автоматически: сервер отдаёт /api/catalog,
+// товары лежат в одном файле products.json (корень репозитория).
+
+function pluralPositions(n) {
+    const m = Math.abs(n) % 100;
+    const d = m % 10;
+    if (m > 10 && m < 20) return 'позиций';
+    if (d > 1 && d < 5) return 'позиции';
+    if (d === 1) return 'позиция';
+    return 'позиций';
+}
+
+function escHtml(str) {
+    return String(str ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+function renderCatalog(data) {
+    const root  = document.getElementById('catalog-root');
+    const side  = document.getElementById('sidebar-links');
+    const chips = document.getElementById('mobile-chips');
+    const warrantyDefault = data.warranty || '';
+
+    let html = '', sideHtml = '', chipsHtml = '';
+    for (const cat of (data.categories || [])) {
+        sideHtml  += `<a class="cat-link" href="#${escHtml(cat.id)}"><span>${escHtml(cat.icon)}</span> ${escHtml(cat.title)}</a>`;
+        chipsHtml += `<a class="chip" href="#${escHtml(cat.id)}">${escHtml(cat.icon)} ${escHtml(cat.title)}</a>`;
+
+        const prods = cat.products || [];
+        let cards = '';
+        for (const p of prods) {
+            const warranty = p.warranty || warrantyDefault;
+            const out = Number(p.stock) === 0;
+            cards += `
+        <article class="product-card${out ? ' hidden' : ''}" data-name="${escHtml(p.name)}">
+          <div class="p-info">
+            <div class="p-name">${escHtml(p.name)}${p.badge ? ` <span class="badge-pop">${escHtml(p.badge)}</span>` : ''}</div>
+            <div class="p-desc">${escHtml(p.desc || '')}</div>
+            ${warranty ? `<div class="p-warranty">${escHtml(warranty)}</div>` : ''}
+            ${p.details ? `<div class="details-box">${p.details}</div>` : ''}
+          </div>
+          <div class="p-stock-col"><div class="stock-label">${out ? 'Нет в наличии' : 'В наличии'}</div><div class="stock-count">${Number(p.stock) || 0} шт.</div></div>
+          <div class="p-action-col">
+            ${p.rub ? `<div class="price-rub">${escHtml(p.rub)}</div>` : ''}
+            <div class="price-main">${escHtml(String(p.price))} USDT</div>
+            <div class="btn-row">
+              ${p.details ? '<button class="btn btn-info" type="button">Подробнее</button>' : ''}
+              ${out ? '' : '<button class="btn btn-add" type="button">В корзину</button>'}
+            </div>
+          </div>
+        </article>`;
+        }
+        html += `
+    <div class="cat-block" id="${escHtml(cat.id)}">
+      <h2 class="cat-title"><span>${escHtml(cat.icon)}</span> ${escHtml(cat.title)} <span class="cat-count">${prods.length} ${pluralPositions(prods.length)}</span></h2>
+      <div class="product-list">${cards}
+      </div>
+    </div>`;
+    }
+    root.innerHTML = html;
+    if (side)  side.innerHTML  = sideHtml;
+    if (chips) chips.innerHTML = chipsHtml;
+}
+
+async function initCatalog() {
+    const root = document.getElementById('catalog-root');
+    if (!root) return;
+    try {
+        const res = await fetch('/api/catalog');
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        renderCatalog(await res.json());
+    } catch (e) {
+        root.innerHTML = '<div class="status-bar" style="color:var(--red);border-color:rgba(255,94,108,.25);background:rgba(255,94,108,.08);">❌ Не удалось загрузить каталог. Обновите страницу или напишите @amigospeso</div>';
+    }
+}
+
+initCatalog();
 
 // Дата обновления стока в статус-баре — всегда сегодня
 const stockDateEl = document.getElementById('stock-date');
