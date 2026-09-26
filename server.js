@@ -121,32 +121,34 @@ async function notifyOwner(text) {
         console.error('Ошибка уведомления в Telegram:', e.message);
     }
 }
-
 // ── Авторегистрация вебхука CryptoBot при старте ──
+// ВАЖНО: CryptoBot принимает ТОЛЬКО POST-запросы для всех методов API
+// (GET вернёт ошибку 405 Method Not Allowed).
 async function registerWebhook() {
     const webhookUrl = `${MY_DOMAIN}/api/payment-webhook`;
+    const headers = {
+        'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN,
+        'Content-Type': 'application/json'
+    };
     try {
-        const info = await axios.get(`${CRYPTOBOT_BASE}/api/getWebhookInfo`, {
-            headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN },
-            timeout: 10000
-        });
+        // Узнаём текущий вебхук (тоже POST!)
+        let currentUrl = '';
+        try {
+            const info = await axios.post(`${CRYPTOBOT_BASE}/api/getWebhookInfo`, {}, { headers, timeout: 10000 });
+            currentUrl = (info.data && info.data.result && info.data.result.url) || '';
+        } catch (e) {
+            console.log('ℹ️ Не удалось проверить текущий вебхук (' + e.message + ') — регистрируем заново');
+        }
 
-        if ((info.data?.result?.url || '') === webhookUrl) {
+        if (currentUrl === webhookUrl) {
             console.log(`✅ Вебхук уже зарегистрирован: ${webhookUrl}`);
             return;
         }
 
-        const res = await axios.post(
-            `${CRYPTOBOT_BASE}/api/setWebhook`,
-            { url: webhookUrl },
-            {
-                headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN, 'Content-Type': 'application/json' },
-                timeout: 10000
-            }
-        );
+        const res = await axios.post(`${CRYPTOBOT_BASE}/api/setWebhook`, { url: webhookUrl }, { headers, timeout: 10000 });
 
-        if (res.data?.ok) console.log(`✅ Вебхук зарегистрирован: ${webhookUrl}`);
-        else              console.error('❌ CryptoBot не принял вебхук:', res.data);
+        if (res.data && res.data.ok) console.log(`✅ Вебхук зарегистрирован: ${webhookUrl}`);
+        else                         console.error('❌ CryptoBot не принял вебхук:', res.data);
     } catch (e) {
         console.error('❌ Ошибка регистрации вебхука:', e.message);
     }
