@@ -40,8 +40,8 @@ if (missing.length) {
 
 // ═══════════════════════════════════════════════════════════
 //  КАТАЛОГ — цены хранятся ТОЛЬКО на сервере.
-//  Клиент присылает только название товара — подменить
-//  цену через DevTools больше невозможно.
+//  Клиент присылает названия товаров и количество —
+//  сервер сам считает итоговую сумму.
 //  ⚠️ Названия должны совпадать с data-name в index.html
 // ═══════════════════════════════════════════════════════════
 const CATALOG = {
@@ -54,9 +54,13 @@ const CATALOG = {
     'Google Ads | Саморег UA | cookies':        { price: 15   },
 };
 
+// Лимиты корзины
+const MAX_QTY_PER_ITEM  = 100;    // максимум штук одного товара
+const MAX_DISTINCT_ITEMS = 50;    // максимум разных позиций в заказе
+const MAX_ORDER_TOTAL   = 100000; // максимальная сумма заказа, USDT
+
 // ═══════════════════════════════════════════════════════════
 //  ЖУРНАЛ ЗАКАЗОВ (JSONL) + защита от повторной обработки
-//  вебхука (invoice_id / update_id дедуплицируются).
 // ═══════════════════════════════════════════════════════════
 const DATA_DIR    = path.join(__dirname, 'data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
@@ -92,6 +96,13 @@ function saveOrderRecord(rec) {
 // ── Экранирование HTML — защита от инъекций в уведомлениях Telegram ──
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ESCAPES[c]);
+
+// ── Красивый список позиций для уведомления ──
+function buildOrderLines(items) {
+    return items
+        .map(i => `• ${escapeHtml(i.name)} ×${i.qty} — ${(i.price * i.qty).toFixed(2)} USDT`)
+        .join('\n');
+}
 
 // ── Валидация ввода ──
 const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
@@ -142,9 +153,8 @@ async function registerWebhook() {
 }
 
 // ── Проверка подписи вебхука CryptoBot ──
-// Алгоритм (doc.crypt.bot): key = SHA-256(api_token), далее
-// HMAC-SHA256(key, raw_body) → hex, сравнение timing-safe
-// с заголовком crypto-pay-api-signature.
+// key = SHA-256(api_token), далее HMAC-SHA256(key, raw_body) → hex,
+// timing-safe сравнение с заголовком crypto-pay-api-signature.
 function verifyCryptoBotSignature(rawBody, signature) {
     if (!signature || typeof signature !== 'string') return false;
     try {
@@ -165,8 +175,6 @@ const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-// Безопасные заголовки (CSP: только 'self' + Google Fonts,
-// inline-скрипты/стили запрещены — весь JS и CSS вынесены в файлы)
 app.use(helmet({
     contentSecurityPolicy: {
         useDefaults: true,
@@ -187,7 +195,7 @@ app.use(helmet({
 
 // JSON-парсер + сохранение сырого тела для проверки подписи вебхука
 app.use(express.json({
-    limit: '10kb',
+    limit: '20kb',
     verify: (req, res, buf) => { req.rawBody = buf; }
 }));
 
@@ -214,17 +222,50 @@ app.get('/api/catalog', apiLimiter, (req, res) => {
     res.json({ products: Object.entries(CATALOG).map(([name, p]) => ({ name, price: p.price })) });
 });
 
-// ── Создание инвойса (покупатель нажал «Купить») ──
+// ── Создание инвойса (оформление заказа из корзины) ──
+// Принимает: { items: [{name, qty}], buyerTelegram, buyerEmail }
+// Сумма считается ТОЛЬКО на сервере по каталогу.
 app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
     try {
-        const { productName, buyerTelegram, buyerEmail } = req.body || {};
+        const { items, buyerTelegram, buyerEmail } = req.body || {};
 
-        // Цена берётся ТОЛЬКО из серверного каталога
-        const product = CATALOG[productName];
-        if (!product) {
-            return res.status(400).json({ success: false, error: 'Товар не найден' });
+        // ── Собираем позиции: массив (новый формат) или один товар (старый) ──
+        let rawItems;
+        if (Array.isArray(items) && items.length > 0) {
+            rawItems = items;
+        } else if (req.body && typeof req.body.productName === 'string') {
+            rawItems = [{ name: req.body.productName, qty: 1 }]; // обратная совместимость
+        } else {
+            return res.status(400).json({ success: false, error: 'Корзина пуста' });
         }
 
+        if (rawItems.length > MAX_DISTINCT_ITEMS) {
+            return res.status(400).json({ success: false, error: `Слишком много позиций (максимум ${MAX_DISTINCT_ITEMS})` });
+        }
+
+        // ── Проверяем каждую позицию и считаем сумму по серверному каталогу ──
+        let total = 0;
+        const cleanItems = [];
+        for (const raw of rawItems) {
+            const name = String(raw?.name || '').slice(0, 200);
+            const product = CATALOG[name];
+            if (!product) {
+                return res.status(400).json({ success: false, error: 'Товар не найден: ' + name });
+            }
+            let qty = parseInt(raw?.qty, 10);
+            if (!Number.isFinite(qty) || qty < 1) qty = 1;
+            if (qty > MAX_QTY_PER_ITEM) {
+                return res.status(400).json({ success: false, error: `Максимум ${MAX_QTY_PER_ITEM} шт. одного товара` });
+            }
+            total += product.price * qty;
+            cleanItems.push({ name, qty, price: product.price });
+        }
+
+        if (!(total > 0) || total > MAX_ORDER_TOTAL) {
+            return res.status(400).json({ success: false, error: 'Некорректная сумма заказа' });
+        }
+
+        // ── Контакты покупателя ──
         if (typeof buyerTelegram !== 'string' || typeof buyerEmail !== 'string') {
             return res.status(400).json({ success: false, error: 'Некорректные данные' });
         }
@@ -240,15 +281,22 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
         }
 
         const tgNorm = tg.startsWith('@') ? tg : '@' + tg;
-        const price  = product.price.toFixed(2);
+        const totalStr = total.toFixed(2);
 
-        const buyerPayload = JSON.stringify({ tg: tgNorm, email, product: productName });
+        // В payload помещаем весь состав заказа — вернётся в вебхуке
+        const buyerPayload = JSON.stringify({ tg: tgNorm, email, items: cleanItems, total: totalStr });
+
+        // Описание счёта — краткий состав (лимит CryptoBot 1024 символа)
+        const description = cleanItems
+            .map(i => `${i.name} ×${i.qty}`)
+            .join('\n')
+            .substring(0, 1024);
 
         const response = await axios.post(
             `${CRYPTOBOT_BASE}/api/createInvoice`,
             {
-                description:   productName.substring(0, 1024),
-                amount:        price,
+                description,
+                amount:        totalStr,
                 currency_type: 'crypto',
                 asset:         'USDT',
                 payload:       buyerPayload,
@@ -268,15 +316,17 @@ app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
         if (response.status === 200 && data.ok) {
             saveOrderRecord({
                 ts: new Date().toISOString(), type: 'created',
-                product: productName, price, tg: tgNorm, email,
+                items: cleanItems, total: totalStr, tg: tgNorm, email,
                 invoiceId: data.result.invoice_id
             });
 
             await notifyOwner(
-`🛒 <b>Новый заказ — ожидает оплаты</b>
+`🛒 <b>Новый заказ (${cleanItems.length} поз.) — ожидает оплаты</b>
 
-📦 <b>Товар:</b> ${escapeHtml(productName)}
-💰 <b>Сумма:</b> ${escapeHtml(price)} USDT
+📦 <b>Состав:</b>
+${buildOrderLines(cleanItems)}
+
+💰 <b>Итого:</b> ${escapeHtml(totalStr)} USDT
 👤 <b>Telegram:</b> ${escapeHtml(tgNorm)}
 📧 <b>Email:</b> ${escapeHtml(email)}
 🔗 <b>Ссылка на оплату:</b> <a href="${data.result.pay_url}">открыть</a>
@@ -316,7 +366,7 @@ app.post('/api/payment-webhook', webhookLimiter, (req, res) => {
         // 3. Нас интересует только «счёт оплачен»
         if (update.update_type !== 'invoice_paid') return res.sendStatus(200);
 
-        // 4. Дедупликация: повторные доставки того же события игнорируем
+        // 4. Дедупликация повторных доставок
         if (update.update_id && processedUpdateIds.has(update.update_id)) return res.sendStatus(200);
 
         const invoice = update.payload || {};
@@ -326,9 +376,23 @@ app.post('/api/payment-webhook', webhookLimiter, (req, res) => {
         const amount = parseFloat(invoice.amount);
         if (!(amount > 0) || typeof invoice.asset !== 'string') return res.sendStatus(400);
 
-        // 6. Достаём данные покупателя из payload
+        // 6. Достаём состав заказа из payload
         let buyer = {};
         try { buyer = JSON.parse(invoice.payload || '{}'); } catch (_) {}
+
+        // Список позиций + мягкая проверка суммы
+        let orderLines;
+        let itemsSum = 0;
+        if (Array.isArray(buyer.items) && buyer.items.length > 0) {
+            orderLines = buildOrderLines(buyer.items);
+            itemsSum = buyer.items.reduce((s, i) =>
+                s + (parseFloat(i.price) || 0) * (parseInt(i.qty) || 0), 0);
+        } else {
+            orderLines = `• ${escapeHtml(buyer.product || 'неизвестно')}`;
+        }
+        const mismatch = (itemsSum > 0 && Math.abs(itemsSum - amount) > 0.01)
+            ? '\n⚠️ <b>ВНИМАНИЕ: сумма заказа не совпадает с оплатой!</b>'
+            : '';
 
         // 7. Фиксируем обработку
         if (update.update_id) processedUpdateIds.add(update.update_id);
@@ -338,18 +402,20 @@ app.post('/api/payment-webhook', webhookLimiter, (req, res) => {
             updateId: update.update_id, invoiceId: invoice.invoice_id,
             amount, asset: invoice.asset,
             tg: buyer.tg || 'неизвестно', email: buyer.email || 'неизвестно',
-            product: buyer.product || 'неизвестно'
+            items: buyer.items || null, product: buyer.product || null
         });
 
         // 8. Уведомление владельцу
         notifyOwner(
 `✅ <b>ОПЛАТА ПОЛУЧЕНА — выдай товар!</b>
 
-📦 <b>Товар:</b> ${escapeHtml(buyer.product || 'неизвестно')}
+📦 <b>Состав заказа:</b>
+${orderLines}
+
 💰 <b>Оплачено:</b> ${escapeHtml(amount)} ${escapeHtml(invoice.asset)}
 👤 <b>Telegram покупателя:</b> ${escapeHtml(buyer.tg || 'неизвестно')}
 📧 <b>Email покупателя:</b> ${escapeHtml(buyer.email || 'неизвестно')}
-🆔 <b>Invoice ID:</b> <code>${escapeHtml(invoice.invoice_id)}</code>
+🆔 <b>Invoice ID:</b> <code>${escapeHtml(invoice.invoice_id)}</code>${mismatch}
 
 ⏰ <b>Выдайте товар в течение 5 минут!</b>`
         ).catch(() => {});
