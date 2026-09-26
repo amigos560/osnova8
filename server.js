@@ -56,13 +56,13 @@ if (missing.length) {
 //  ⚠️ Названия должны совпадать с data-name в public/index.html
 // ═══════════════════════════════════════════════════════════
 const CATALOG = {
-    'Telegram Ads РК | Стартовый Траст':        { price: 500  },
-    'Telegram Ads РК VIP | Агентский Безлимит': { price: 1200 },
-    'FARM | Аккаунт UA | 14 дней прогрева':     { price: 30   },
-    'KING + ПЗРД | БМ 250$ + 2FA':              { price: 144  },
-    'Бизнес Менеджер (BM) 50$ лимит':           { price: 54   },
+    'Telegram Ads РК | Стартовый Траст':        { price: 350  },
+    'Telegram Ads РК VIP | Агентский Безлимит': { price: 900 },
+    'FARM | Аккаунт UA | 14 дней прогрева':     { price: 15   },
+    'KING + ПЗРД | БМ 250$ + 2FA':              { price: 75  },
+    'Бизнес Менеджер (BM) 50$ лимит':           { price: 30   },
     'Авторег FB | MIX IP | Email в комплекте':  { price: 5    },
-    'Google Ads | Саморег UA | cookies':        { price: 15   },
+    'Google Ads | Саморег UA | cookies':        { price: 22   },
 };
 
 const MAX_QTY_PER_ITEM   = 100;
