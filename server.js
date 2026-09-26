@@ -1,194 +1,391 @@
-const express = require('express');
-const path    = require('path');
-const axios   = require('axios');
+'use strict';
 
-const app = express();
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+require('dotenv').config();
 
-// ══════════════════════════════════════════
-//  НАСТРОЙКИ — заполни перед запуском
-// ══════════════════════════════════════════
-const CRYPTO_BOT_TOKEN = "600987:AAOqeM3fM08JDbEbu2yCDU1F7b6g7o9922x";
+const express     = require('express');
+const path        = require('path');
+const fs          = require('fs');
+const crypto      = require('crypto');
+const axios       = require('axios');
+const helmet      = require('helmet');
+const rateLimit   = require('express-rate-limit');
 
-const TG_BOT_TOKEN = "8904225827:AAFI2SJDpdA-z4-MeIdZpQloyEIPhHNX-Gc";  // из @BotFather → /newbot
-const TG_OWNER_ID  = "8656762078";     // из @userinfobot
+// ═══════════════════════════════════════════════════════════
+//  КОНФИГУРАЦИЯ — ТОЛЬКО из переменных окружения (.env)
+//  ВАЖНО: токены НИКОГДА не храните в коде и не публикуйте
+//  в git — они скомпрометированы и должны быть перевыпущены!
+//  - CryptoBot: @CryptoBot → Crypto Pay → My Apps → переиздать токен
+//  - Telegram:  @BotFather → /revoke
+// ═══════════════════════════════════════════════════════════
+const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
+const TG_BOT_TOKEN     = process.env.TG_BOT_TOKEN;
+const TG_OWNER_ID      = process.env.TG_OWNER_ID;
+const MY_DOMAIN        = (process.env.MY_DOMAIN || '').replace(/\/+$/, '');
+const IS_TESTNET       = String(process.env.IS_TESTNET).toLowerCase() === 'true';
+const PORT             = parseInt(process.env.PORT || '3000', 10);
 
-// Твой домен БЕЗ слэша в конце. Пример: "https://amigos-shop.up.railway.app"
-const MY_DOMAIN = "https://amigosaccs.store";
+const CRYPTOBOT_BASE = IS_TESTNET ? 'https://testnet-pay.crypt.bot' : 'https://pay.crypt.bot';
 
-const IS_TESTNET = false;
-const CRYPTOBOT_BASE = IS_TESTNET ? "https://testnet-pay.crypt.bot" : "https://pay.crypt.bot";
-// ══════════════════════════════════════════
+// ── Проверка конфигурации при старте ──
+const missing = [];
+if (!CRYPTO_BOT_TOKEN) missing.push('CRYPTO_BOT_TOKEN');
+if (!TG_BOT_TOKEN)     missing.push('TG_BOT_TOKEN');
+if (!TG_OWNER_ID)      missing.push('TG_OWNER_ID');
+if (!MY_DOMAIN)        missing.push('MY_DOMAIN');
+if (missing.length) {
+    console.error('❌ Отсутствуют переменные окружения: ' + missing.join(', '));
+    console.error('   Создайте .env по образцу .env.example или задайте их на хостинге.');
+    process.exit(1);
+}
 
+// ═══════════════════════════════════════════════════════════
+//  КАТАЛОГ — цены хранятся ТОЛЬКО на сервере.
+//  Клиент присылает только название товара — подменить
+//  цену через DevTools больше невозможно.
+//  ⚠️ Названия должны совпадать с data-name в index.html
+// ═══════════════════════════════════════════════════════════
+const CATALOG = {
+    'Telegram Ads РК | Стартовый Траст':        { price: 500  },
+    'Telegram Ads РК VIP | Агентский Безлимит': { price: 1200 },
+    'FARM | Аккаунт UA | 14 дней прогрева':     { price: 30   },
+    'KING + ПЗРД | БМ 250$ + 2FA':              { price: 144  },
+    'Бизнес Менеджер (BM) 50$ лимит':           { price: 54   },
+    'Авторег FB | MIX IP | Email в комплекте':  { price: 5    },
+    'Google Ads | Саморег UA | cookies':        { price: 15   },
+};
 
-// ── Отправка уведомления тебе в Telegram ──
-async function notifyOwner(text) {
+// ═══════════════════════════════════════════════════════════
+//  ЖУРНАЛ ЗАКАЗОВ (JSONL) + защита от повторной обработки
+//  вебхука (invoice_id / update_id дедуплицируются).
+// ═══════════════════════════════════════════════════════════
+const DATA_DIR    = path.join(__dirname, 'data');
+const ORDERS_FILE = path.join(DATA_DIR, 'orders.jsonl');
+const processedInvoiceIds = new Set();
+const processedUpdateIds  = new Set();
+
+function loadOrderLog() {
     try {
-        await axios.post(`https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`, {
-            chat_id:    TG_OWNER_ID,
-            text:       text,
-            parse_mode: 'HTML'
-        });
+        if (!fs.existsSync(ORDERS_FILE)) return;
+        for (const line of fs.readFileSync(ORDERS_FILE, 'utf8').split('\n')) {
+            if (!line.trim()) continue;
+            try {
+                const rec = JSON.parse(line);
+                if (rec.invoiceId) processedInvoiceIds.add(rec.invoiceId);
+                if (rec.updateId)  processedUpdateIds.add(rec.updateId);
+            } catch (_) {}
+        }
+        console.log(`📦 В журнале обработанных заказов: ${processedInvoiceIds.size}`);
     } catch (e) {
-        console.error("Ошибка уведомления в Telegram:", e.message);
+        console.error('Ошибка чтения журнала заказов:', e.message);
     }
 }
 
+function saveOrderRecord(rec) {
+    try {
+        if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+        fs.appendFileSync(ORDERS_FILE, JSON.stringify(rec) + '\n');
+    } catch (e) {
+        console.error('Ошибка записи заказа в журнал:', e.message);
+    }
+}
 
-// ── Автоматическая регистрация вебхука в CryptoBot ──
-// Вызывается один раз при старте сервера.
-// CryptoBot запоминает адрес навсегда — при следующих запусках тоже работает.
+// ── Экранирование HTML — защита от инъекций в уведомлениях Telegram ──
+const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+const escapeHtml = (s) => String(s ?? '').replace(/[&<>"']/g, c => ESCAPES[c]);
+
+// ── Валидация ввода ──
+const EMAIL_RE    = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+const TG_USER_RE  = /^@?[A-Za-z0-9_]{3,64}$/;
+const TG_PHONE_RE = /^\+?\d[\d\s\-()]{8,16}$/;
+
+// ── Отправка уведомления владельцу в Telegram ──
+async function notifyOwner(text) {
+    try {
+        await axios.post(
+            `https://api.telegram.org/bot${TG_BOT_TOKEN}/sendMessage`,
+            { chat_id: TG_OWNER_ID, text, parse_mode: 'HTML' },
+            { timeout: 8000 }
+        );
+    } catch (e) {
+        console.error('Ошибка уведомления в Telegram:', e.message);
+    }
+}
+
+// ── Авторегистрация вебхука CryptoBot при старте ──
 async function registerWebhook() {
     const webhookUrl = `${MY_DOMAIN}/api/payment-webhook`;
     try {
-        // Сначала смотрим, какой вебхук уже стоит
         const info = await axios.get(`${CRYPTOBOT_BASE}/api/getWebhookInfo`, {
-            headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN }
+            headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN },
+            timeout: 10000
         });
 
-        const current = info.data?.result?.url || '';
-
-        if (current === webhookUrl) {
+        if ((info.data?.result?.url || '') === webhookUrl) {
             console.log(`✅ Вебхук уже зарегистрирован: ${webhookUrl}`);
             return;
         }
 
-        // Если адрес другой (или не стоит) — регистрируем
-        const res = await axios.post(`${CRYPTOBOT_BASE}/api/setWebhook`,
+        const res = await axios.post(
+            `${CRYPTOBOT_BASE}/api/setWebhook`,
             { url: webhookUrl },
-            { headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN, 'Content-Type': 'application/json' } }
+            {
+                headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN, 'Content-Type': 'application/json' },
+                timeout: 10000
+            }
         );
 
-        if (res.data?.ok) {
-            console.log(`✅ Вебхук зарегистрирован: ${webhookUrl}`);
-        } else {
-            console.error("❌ CryptoBot не принял вебхук:", res.data);
-        }
+        if (res.data?.ok) console.log(`✅ Вебхук зарегистрирован: ${webhookUrl}`);
+        else              console.error('❌ CryptoBot не принял вебхук:', res.data);
     } catch (e) {
-        console.error("❌ Ошибка регистрации вебхука:", e.message);
+        console.error('❌ Ошибка регистрации вебхука:', e.message);
     }
 }
 
-
-// ── Создание инвойса (покупатель нажал «Перейти к оплате») ──
-app.post('/api/create-invoice', async (req, res) => {
+// ── Проверка подписи вебхука CryptoBot ──
+// Алгоритм (doc.crypt.bot): key = SHA-256(api_token), далее
+// HMAC-SHA256(key, raw_body) → hex, сравнение timing-safe
+// с заголовком crypto-pay-api-signature.
+function verifyCryptoBotSignature(rawBody, signature) {
+    if (!signature || typeof signature !== 'string') return false;
     try {
-        const { productName, price, currency, buyerTelegram, buyerEmail } = req.body;
+        const secret   = crypto.createHash('sha256').update(CRYPTO_BOT_TOKEN).digest();
+        const expected = crypto.createHmac('sha256', secret).update(rawBody).digest('hex');
+        const a = Buffer.from(expected, 'hex');
+        const b = Buffer.from(signature, 'hex');
+        return a.length === b.length && crypto.timingSafeEqual(a, b);
+    } catch (_) {
+        return false;
+    }
+}
 
-        if (!price)         return res.status(400).json({ success: false, error: "Цена не указана" });
-        if (!buyerTelegram) return res.status(400).json({ success: false, error: "Укажите Telegram" });
-        if (!buyerEmail)    return res.status(400).json({ success: false, error: "Укажите Email" });
+// ═══════════════════════════════════════════════════════════
+//  ПРИЛОЖЕНИЕ
+// ═══════════════════════════════════════════════════════════
+const app = express();
+app.disable('x-powered-by');
+app.set('trust proxy', 1);
 
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(buyerEmail)) {
-            return res.status(400).json({ success: false, error: "Email указан неверно" });
+// Безопасные заголовки (CSP: только 'self' + Google Fonts,
+// inline-скрипты/стили запрещены — весь JS и CSS вынесены в файлы)
+app.use(helmet({
+    contentSecurityPolicy: {
+        useDefaults: true,
+        directives: {
+            'default-src':   ["'self'"],
+            'script-src':    ["'self'"],
+            'style-src':     ["'self'", 'https://fonts.googleapis.com'],
+            'font-src':      ["'self'", 'https://fonts.gstatic.com'],
+            'img-src':       ["'self'", 'data:'],
+            'connect-src':   ["'self'"],
+            'object-src':    ["'none'"],
+            'frame-ancestors': ["'none'"],
+            'form-action':   ["'self'"],
+        }
+    },
+    referrerPolicy: { policy: 'no-referrer' }
+}));
+
+// JSON-парсер + сохранение сырого тела для проверки подписи вебхука
+app.use(express.json({
+    limit: '10kb',
+    verify: (req, res, buf) => { req.rawBody = buf; }
+}));
+
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: 'index.html' }));
+
+// ── Rate limiting ──
+const createInvoiceLimiter = rateLimit({
+    windowMs: 60 * 1000, max: 10,
+    standardHeaders: true, legacyHeaders: false,
+    message: { success: false, error: 'Слишком много запросов. Попробуйте через минуту.' }
+});
+const webhookLimiter = rateLimit({
+    windowMs: 60 * 1000, max: 120,
+    standardHeaders: true, legacyHeaders: false,
+    message: { error: 'Too many requests' }
+});
+const apiLimiter = rateLimit({
+    windowMs: 60 * 1000, max: 60,
+    standardHeaders: true, legacyHeaders: false
+});
+
+// ── Публичный каталог товаров (для проверки цен) ──
+app.get('/api/catalog', apiLimiter, (req, res) => {
+    res.json({ products: Object.entries(CATALOG).map(([name, p]) => ({ name, price: p.price })) });
+});
+
+// ── Создание инвойса (покупатель нажал «Купить») ──
+app.post('/api/create-invoice', createInvoiceLimiter, async (req, res) => {
+    try {
+        const { productName, buyerTelegram, buyerEmail } = req.body || {};
+
+        // Цена берётся ТОЛЬКО из серверного каталога
+        const product = CATALOG[productName];
+        if (!product) {
+            return res.status(400).json({ success: false, error: 'Товар не найден' });
         }
 
-        const tg         = buyerTelegram.startsWith('@') ? buyerTelegram : '@' + buyerTelegram;
-        const cleanPrice = parseFloat(price.toString().replace(/[^\d.]/g, '')).toFixed(2);
-
-        if (isNaN(cleanPrice) || parseFloat(cleanPrice) <= 0) {
-            return res.status(400).json({ success: false, error: "Некорректная цена" });
+        if (typeof buyerTelegram !== 'string' || typeof buyerEmail !== 'string') {
+            return res.status(400).json({ success: false, error: 'Некорректные данные' });
         }
 
-        // Сохраняем данные покупателя внутри инвойса — CryptoBot вернёт их в вебхуке
-        const buyerPayload = JSON.stringify({ tg, email: buyerEmail, product: productName });
+        const tg    = buyerTelegram.trim();
+        const email = buyerEmail.trim();
 
-        const response = await axios.post(`${CRYPTOBOT_BASE}/api/createInvoice`, {
-            description:   (productName || "Товар").substring(0, 1024),
-            amount:        cleanPrice,
-            currency_type: 'crypto',
-            asset:         'USDT',
-            payload:       buyerPayload
-        }, {
-            headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN, 'Content-Type': 'application/json' },
-            timeout: 10000
-        });
+        if (email.length > 120 || !EMAIL_RE.test(email)) {
+            return res.status(400).json({ success: false, error: 'Email указан неверно' });
+        }
+        if (!TG_USER_RE.test(tg) && !TG_PHONE_RE.test(tg)) {
+            return res.status(400).json({ success: false, error: 'Укажите корректный Telegram (@username или телефон)' });
+        }
 
-        const data = response.data;
+        const tgNorm = tg.startsWith('@') ? tg : '@' + tg;
+        const price  = product.price.toFixed(2);
 
-        if (data.ok) {
-            // Уведомление: новый заказ ожидает оплаты
+        const buyerPayload = JSON.stringify({ tg: tgNorm, email, product: productName });
+
+        const response = await axios.post(
+            `${CRYPTOBOT_BASE}/api/createInvoice`,
+            {
+                description:   productName.substring(0, 1024),
+                amount:        price,
+                currency_type: 'crypto',
+                asset:         'USDT',
+                payload:       buyerPayload,
+                expires_in:    1800, // 30 минут на оплату
+                paid_btn_name: 'viewItem',
+                paid_btn_url:  `${MY_DOMAIN}/payment-success.html`
+            },
+            {
+                headers: { 'Crypto-Pay-API-Token': CRYPTO_BOT_TOKEN, 'Content-Type': 'application/json' },
+                timeout: 10000,
+                validateStatus: s => s < 500
+            }
+        );
+
+        const data = response.data || {};
+
+        if (response.status === 200 && data.ok) {
+            saveOrderRecord({
+                ts: new Date().toISOString(), type: 'created',
+                product: productName, price, tg: tgNorm, email,
+                invoiceId: data.result.invoice_id
+            });
+
             await notifyOwner(
 `🛒 <b>Новый заказ — ожидает оплаты</b>
 
-📦 <b>Товар:</b> ${productName}
-💰 <b>Сумма:</b> ${cleanPrice} USDT
-👤 <b>Telegram:</b> ${tg}
-📧 <b>Email:</b> ${buyerEmail}
+📦 <b>Товар:</b> ${escapeHtml(productName)}
+💰 <b>Сумма:</b> ${escapeHtml(price)} USDT
+👤 <b>Telegram:</b> ${escapeHtml(tgNorm)}
+📧 <b>Email:</b> ${escapeHtml(email)}
 🔗 <b>Ссылка на оплату:</b> <a href="${data.result.pay_url}">открыть</a>
 🆔 <b>Invoice ID:</b> <code>${data.result.invoice_id}</code>`
             );
 
             return res.status(200).json({ success: true, payUrl: data.result.pay_url });
-        } else {
-            const err = data.error ? `${data.error.name} (код ${data.error.code})` : 'Ошибка CryptoBot';
-            return res.status(400).json({ success: false, error: err });
         }
+
+        console.error('CryptoBot createInvoice ошибка:', response.status, JSON.stringify(data));
+        return res.status(400).json({ success: false, error: 'Ошибка создания счёта. Напишите @amigospeso — оплатим вручную.' });
 
     } catch (error) {
-        console.error("=== ОШИБКА СЕРВЕРА ===", error.message);
-        if (error.code === 'ENOTFOUND' || error.code === 'ECONNREFUSED')
-            return res.status(500).json({ success: false, error: "Нет соединения с CryptoBot" });
-        if (error.code === 'ECONNABORTED')
-            return res.status(500).json({ success: false, error: "Таймаут — CryptoBot не ответил" });
-        if (error.response)
-            return res.status(500).json({ success: false, error: `Ошибка API: ${JSON.stringify(error.response.data)}` });
-        return res.status(500).json({ success: false, error: error.message });
+        console.error('=== ОШИБКА /api/create-invoice ===', error.message);
+        if (error.code === 'ECONNABORTED') {
+            return res.status(500).json({ success: false, error: 'CryptoBot не ответил вовремя, попробуйте ещё раз' });
+        }
+        return res.status(500).json({ success: false, error: 'Внутренняя ошибка сервера' });
     }
 });
 
-
-// ── Вебхук от CryptoBot — срабатывает когда покупатель ОПЛАТИЛ ──
-app.post('/api/payment-webhook', async (req, res) => {
+// ── Вебхук от CryptoBot — только после проверки подписи ──
+app.post('/api/payment-webhook', webhookLimiter, (req, res) => {
     try {
-        const update = req.body;
-
-        // Нас интересует только событие «счёт оплачен»
-        if (update.update_type !== 'invoice_paid') {
-            return res.sendStatus(200);
+        // 1. Проверяем подпись ПЕРЕД любой обработкой
+        const signature = req.headers['crypto-pay-api-signature'];
+        if (!verifyCryptoBotSignature(req.rawBody || Buffer.alloc(0), signature)) {
+            console.warn('⚠️ Вебхук с НЕВАЛИДНОЙ подписью от IP:', req.ip);
+            return res.sendStatus(401);
         }
 
-        const invoice   = update.payload;
-        const amount    = invoice.amount;
-        const asset     = invoice.asset;
-        const invoiceId = invoice.invoice_id;
+        // 2. Парсим сырой JSON
+        let update;
+        try { update = JSON.parse(req.rawBody.toString('utf8')); }
+        catch { return res.sendStatus(400); }
 
-        // Достаём данные покупателя из payload
-        let buyer = { tg: 'неизвестно', email: 'неизвестно', product: 'неизвестно' };
-        try { buyer = JSON.parse(invoice.payload); } catch (_) {}
+        // 3. Нас интересует только «счёт оплачен»
+        if (update.update_type !== 'invoice_paid') return res.sendStatus(200);
 
-        // Уведомление: оплата прошла, надо выдать товар
-        await notifyOwner(
+        // 4. Дедупликация: повторные доставки того же события игнорируем
+        if (update.update_id && processedUpdateIds.has(update.update_id)) return res.sendStatus(200);
+
+        const invoice = update.payload || {};
+        if (invoice.invoice_id && processedInvoiceIds.has(invoice.invoice_id)) return res.sendStatus(200);
+
+        // 5. Санитарная проверка суммы
+        const amount = parseFloat(invoice.amount);
+        if (!(amount > 0) || typeof invoice.asset !== 'string') return res.sendStatus(400);
+
+        // 6. Достаём данные покупателя из payload
+        let buyer = {};
+        try { buyer = JSON.parse(invoice.payload || '{}'); } catch (_) {}
+
+        // 7. Фиксируем обработку
+        if (update.update_id) processedUpdateIds.add(update.update_id);
+        if (invoice.invoice_id) processedInvoiceIds.add(invoice.invoice_id);
+        saveOrderRecord({
+            ts: new Date().toISOString(), type: 'paid',
+            updateId: update.update_id, invoiceId: invoice.invoice_id,
+            amount, asset: invoice.asset,
+            tg: buyer.tg || 'неизвестно', email: buyer.email || 'неизвестно',
+            product: buyer.product || 'неизвестно'
+        });
+
+        // 8. Уведомление владельцу
+        notifyOwner(
 `✅ <b>ОПЛАТА ПОЛУЧЕНА — выдай товар!</b>
 
-📦 <b>Товар:</b> ${buyer.product}
-💰 <b>Оплачено:</b> ${amount} ${asset}
-👤 <b>Telegram покупателя:</b> ${buyer.tg}
-📧 <b>Email покупателя:</b> ${buyer.email}
-🆔 <b>Invoice ID:</b> <code>${invoiceId}</code>
+📦 <b>Товар:</b> ${escapeHtml(buyer.product || 'неизвестно')}
+💰 <b>Оплачено:</b> ${escapeHtml(amount)} ${escapeHtml(invoice.asset)}
+👤 <b>Telegram покупателя:</b> ${escapeHtml(buyer.tg || 'неизвестно')}
+📧 <b>Email покупателя:</b> ${escapeHtml(buyer.email || 'неизвестно')}
+🆔 <b>Invoice ID:</b> <code>${escapeHtml(invoice.invoice_id)}</code>
 
-⏰ <b>Выдай товар в течение 5 минут!</b>`
-        );
+⏰ <b>Выдайте товар в течение 5 минут!</b>`
+        ).catch(() => {});
 
-        res.sendStatus(200);
+        return res.sendStatus(200);
     } catch (e) {
-        console.error("Ошибка вебхука:", e.message);
-        res.sendStatus(500);
+        console.error('Ошибка вебхука:', e.message);
+        return res.sendStatus(500);
     }
 });
 
+// ── Служебные endpoints ──
+app.get('/api/health', apiLimiter, (req, res) => res.json({ ok: true }));
+
+app.use('/api', apiLimiter, (req, res) => res.status(404).json({ success: false, error: 'Not found' }));
 
 // SPA fallback
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
+// Централизованная обработка ошибок
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    console.error('Необработанная ошибка:', err.message);
+    if (res.headersSent) return;
+    res.status(500).json({ success: false, error: 'Внутренняя ошибка сервера' });
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('unhandledRejection:', reason);
+});
 
 // ── Запуск ──
-const PORT = process.env.PORT || 3000;
 app.listen(PORT, async () => {
     console.log(`✅ Магазин запущен на порту ${PORT}`);
-    // Регистрируем вебхук сразу при старте
+    loadOrderLog();
     await registerWebhook();
 });
