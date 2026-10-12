@@ -75,18 +75,18 @@
       ]
     },
     {
-      "id": "cat-autoreg",
+      "id": "cat-proxy",
       "icon": "⚡",
-      "title": "Автореги / Самореги",
+      "title": "USA/UK / PROXY",
       "products": [
         {
-          "name": "Авторег FB | MIX IP | Email в комплекте",
-          "price": 5,
-          "rub": "≈ 475 ₽",
-          "stock": 84,
+          "name": "Proxy USA/UK | По запросу | Ссылка на E-mail и в TG",
+          "price": 50,
+          "rub": "≈ 4750 ₽",
+          "stock": 7,
           "badge": null,
-          "desc": "Чистые автореги для Dolphin, AdsPower и другого специализированного ПО.",
-          "details": "<strong>Комплект:</strong> логин/пароль, cookie, доступ к email — всё для входа через антидетект.<br><strong>Выдача:</strong> одним архивом в Telegram от @amigospeso в течение 5 минут.<br><strong>🛡 Гарантия 12 часов:</strong> замена при бане до первого спенда."
+          "desc": "Лучшие прокси для Dolphin, AdsPower и другого специализированного ПО под Facebook.",
+          "details": "<strong>Комплект:</strong> логин/пароль, ссылка на панель, доступ полноценный.<br><strong>Выдача:</strong> одним сообщением в Telegram от @amigospeso в течение 5 минут.<br><strong>🛡 Гарантия 48 часов:</strong> замена при UDP Block."
         }
       ]
     },
