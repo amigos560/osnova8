@@ -75,18 +75,18 @@
       ]
     },
     {
-      "id": "cat-proxy",
-      "icon": "⚡",
-      "title": "USA/UK / PROXY",
+      "id": "cat-farm",
+      "icon": "😋",
+      "title": "USA Farm",
       "products": [
         {
-          "name": "Proxy USA/UK | По запросу | Ссылка на E-mail и в TG",
-          "price": 50,
+          "name": "Farm аккаунты Facebook 20 дней",
+          "price": 22,
           "rub": "≈ 4750 ₽",
           "stock": 7,
           "badge": null,
-          "desc": "Лучшие прокси для Dolphin, AdsPower и другого специализированного ПО под Facebook.",
-          "details": "<strong>Комплект:</strong> логин/пароль, ссылка на панель, доступ полноценный.<br><strong>Выдача:</strong> одним сообщением в Telegram от @amigospeso в течение 5 минут.<br><strong>🛡 Гарантия 48 часов:</strong> замена при UDP Block."
+          "desc": "Лучшие аккаунты для запуска прямо сейчас, отлично проходят во время штормов.",
+          "details": "<strong>Комплект:</strong> Cookie (JSON), токен EAAB, заполненная Fan Page, ключ 2FA, доступ к почте.<br><strong>Выдача:</strong> одним сообщением в Telegram от @amigospeso в течение 5 минут.<br><strong>🛡 Гарантия 48 часов:</strong> замена при блоке до первого спенда."
         }
       ]
     },
