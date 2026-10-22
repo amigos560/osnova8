@@ -27,9 +27,9 @@
       ]
     },
     {
-      "id": "cat-farm",
+      "id": "cat-farm-ua",
       "icon": "🌱",
-      "title": "Farm Аккаунты Facebook",
+      "title": "Farm Аккаунты Facebook UA",
       "products": [
         {
           "name": "FARM | Аккаунт UA | 14 дней прогрева",
@@ -59,12 +59,12 @@
       ]
     },
     {
-      "id": "cat-bm",
+      "id": "cat-bm-usa",
       "icon": "🏢",
       "title": "Бизнес Менеджеры Facebook USA",
       "products": [
         {
-          "name": "Бизнес Менеджер (BM) 50$ лимит",
+          "name": "Бизнес Менеджер (BM) 50$ лимит USA",
           "price": 30,
           "rub": "≈ 2 850 ₽",
           "stock": 7,
@@ -73,14 +73,14 @@
           "details": "<strong>Что получите:</strong> рабочая ссылка-инвайт в БМ, созданный на старом трастовом аккаунте.<br><strong>Лимит:</strong> 50$/сутки на старте, разгоняется при активном расходе.<br><strong>Выдача:</strong> данные в Telegram от @amigospeso в течение 5 минут.<br><strong>🛡 Гарантия 12 часов:</strong> замена, если БМ отлетает до первого запуска рекламы."
         }
       ]
-      },
-      {
-      "id": "cat-bm",
+    },
+    {
+      "id": "cat-bm-ua",
       "icon": "🏢",
       "title": "Бизнес Менеджеры Facebook UA",
       "products": [
         {
-          "name": "Бизнес Менеджер (BM) 50$ лимит",
+          "name": "Бизнес Менеджер (BM) 50$ лимит UA",
           "price": 30,
           "rub": "≈ 2 850 ₽",
           "stock": 4,
@@ -91,14 +91,14 @@
       ]
     },
     {
-      "id": "cat-farm",
+      "id": "cat-farm-usa",
       "icon": "😋",
       "title": "USA Farm",
       "products": [
         {
           "name": "Farm аккаунты Facebook 20 дней",
           "price": 22,
-          "rub": "≈ 4750 ₽",
+          "rub": "≈ 2 090 ₽",
           "stock": 1,
           "badge": null,
           "desc": "Лучшие аккаунты для запуска прямо сейчас, отлично проходят во время штормов.",
